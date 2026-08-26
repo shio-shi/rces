@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
 import { Route as UsersUsernameRouteImport } from './routes/users.$username'
 
@@ -42,6 +43,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemItemIdRoute = ItemItemIdRouteImport.update({
   id: '/item/$itemId',
   path: '/item/$itemId',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof CatalogRoute
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/catalog': typeof CatalogRoute
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/catalog': typeof CatalogRoute
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/inventory'
     | '/profile'
+    | '/settings'
     | '/item/$itemId'
     | '/users/$username'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/inventory'
     | '/profile'
+    | '/settings'
     | '/item/$itemId'
     | '/users/$username'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/inventory'
     | '/profile'
+    | '/settings'
     | '/item/$itemId'
     | '/users/$username'
   fileRoutesById: FileRoutesById
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   CatalogRoute: typeof CatalogRoute
   InventoryRoute: typeof InventoryRoute
   ProfileRoute: typeof ProfileRoute
+  SettingsRoute: typeof SettingsRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
   UsersUsernameRoute: typeof UsersUsernameRoute
 }
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/item/$itemId': {
       id: '/item/$itemId'
       path: '/item/$itemId'
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogRoute: CatalogRoute,
   InventoryRoute: InventoryRoute,
   ProfileRoute: ProfileRoute,
+  SettingsRoute: SettingsRoute,
   ItemItemIdRoute: ItemItemIdRoute,
   UsersUsernameRoute: UsersUsernameRoute,
 }
