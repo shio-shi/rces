@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CatalogRouteImport } from './routes/catalog'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const CatalogRoute = CatalogRouteImport.update({
   path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemItemIdRoute = ItemItemIdRouteImport.update({
   id: '/item/$itemId',
   path: '/item/$itemId',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
+  '/profile': typeof ProfileRoute
   '/item/$itemId': typeof ItemItemIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
+  '/profile': typeof ProfileRoute
   '/item/$itemId': typeof ItemItemIdRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
+  '/profile': typeof ProfileRoute
   '/item/$itemId': typeof ItemItemIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/catalog' | '/item/$itemId'
+  fullPaths: '/' | '/auth' | '/catalog' | '/profile' | '/item/$itemId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/catalog' | '/item/$itemId'
-  id: '__root__' | '/' | '/auth' | '/catalog' | '/item/$itemId'
+  to: '/' | '/auth' | '/catalog' | '/profile' | '/item/$itemId'
+  id: '__root__' | '/' | '/auth' | '/catalog' | '/profile' | '/item/$itemId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   CatalogRoute: typeof CatalogRoute
+  ProfileRoute: typeof ProfileRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
 }
 
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/item/$itemId': {
       id: '/item/$itemId'
       path: '/item/$itemId'
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   CatalogRoute: CatalogRoute,
+  ProfileRoute: ProfileRoute,
   ItemItemIdRoute: ItemItemIdRoute,
 }
 export const routeTree = rootRouteImport
