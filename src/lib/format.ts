@@ -1,0 +1,58 @@
+export const ITEM_KINDS = [
+  "hat",
+  "hair",
+  "face",
+  "neck",
+  "shoulder",
+  "front",
+  "back",
+  "waist",
+  "gear",
+] as const;
+
+export type ItemKind = (typeof ITEM_KINDS)[number];
+export type ItemClass = "normal" | "limited" | "limitedu";
+
+export const CLASS_LABEL: Record<ItemClass, string> = {
+  normal: "On Sale",
+  limited: "Limited",
+  limitedu: "Limited U",
+};
+
+export type Item = {
+  id: string;
+  name: string;
+  kind: ItemKind;
+  class: ItemClass;
+  description: string;
+  image_url: string | null;
+  price: number;
+  sale_ends_at: string | null;
+  copies_sold: number;
+  rap: number;
+  created_at: string;
+};
+
+export function isLimitedNow(item: Pick<Item, "class" | "sale_ends_at">) {
+  return (
+    item.class !== "normal" &&
+    !!item.sale_ends_at &&
+    new Date(item.sale_ends_at).getTime() <= Date.now()
+  );
+}
+
+export function formatCountdown(target: string | null) {
+  if (!target) return "";
+  const ms = new Date(target).getTime() - Date.now();
+  if (ms <= 0) return "Sale ended";
+  const d = Math.floor(ms / 86400000);
+  const h = Math.floor((ms % 86400000) / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  return `${h}h ${m}m ${s}s`;
+}
+
+export function num(n: number) {
+  return n.toLocaleString("en-US");
+}
