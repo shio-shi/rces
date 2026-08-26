@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CatalogRouteImport } from './routes/catalog'
+import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
 import { Route as UsersUsernameRouteImport } from './routes/users.$username'
@@ -29,6 +30,11 @@ const AuthRoute = AuthRouteImport.update({
 const CatalogRoute = CatalogRouteImport.update({
   id: '/catalog',
   path: '/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
+  '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
+  '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/catalog': typeof CatalogRoute
+  '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/catalog'
+    | '/inventory'
     | '/profile'
     | '/item/$itemId'
     | '/users/$username'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/catalog'
+    | '/inventory'
     | '/profile'
     | '/item/$itemId'
     | '/users/$username'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/catalog'
+    | '/inventory'
     | '/profile'
     | '/item/$itemId'
     | '/users/$username'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   CatalogRoute: typeof CatalogRoute
+  InventoryRoute: typeof InventoryRoute
   ProfileRoute: typeof ProfileRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
   UsersUsernameRoute: typeof UsersUsernameRoute
@@ -129,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/catalog'
       fullPath: '/catalog'
       preLoaderRoute: typeof CatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   CatalogRoute: CatalogRoute,
+  InventoryRoute: InventoryRoute,
   ProfileRoute: ProfileRoute,
   ItemItemIdRoute: ItemItemIdRoute,
   UsersUsernameRoute: UsersUsernameRoute,
