@@ -16,6 +16,7 @@ import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TradeRouteImport } from './routes/trade'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
 import { Route as UsersUsernameRouteImport } from './routes/users.$username'
 
@@ -54,6 +55,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TradeRoute = TradeRouteImport.update({
+  id: '/trade',
+  path: '/trade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemItemIdRoute = ItemItemIdRouteImport.update({
   id: '/item/$itemId',
   path: '/item/$itemId',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
+  '/trade': typeof TradeRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
+  '/trade': typeof TradeRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
+  '/trade': typeof TradeRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/profile'
     | '/settings'
+    | '/trade'
     | '/item/$itemId'
     | '/users/$username'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/profile'
     | '/settings'
+    | '/trade'
     | '/item/$itemId'
     | '/users/$username'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/profile'
     | '/settings'
+    | '/trade'
     | '/item/$itemId'
     | '/users/$username'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   ProfileRoute: typeof ProfileRoute
   SettingsRoute: typeof SettingsRoute
+  TradeRoute: typeof TradeRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
   UsersUsernameRoute: typeof UsersUsernameRoute
 }
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trade': {
+      id: '/trade'
+      path: '/trade'
+      fullPath: '/trade'
+      preLoaderRoute: typeof TradeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/item/$itemId': {
       id: '/item/$itemId'
       path: '/item/$itemId'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   ProfileRoute: ProfileRoute,
   SettingsRoute: SettingsRoute,
+  TradeRoute: TradeRoute,
   ItemItemIdRoute: ItemItemIdRoute,
   UsersUsernameRoute: UsersUsernameRoute,
 }
