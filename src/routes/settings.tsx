@@ -38,7 +38,7 @@ function SettingsPage() {
 
   async function changeUsername() {
     const { data, error } = await supabase.rpc("change_username", { _new: newName.trim() });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     if (data === "ok") {
       toast.success("Username changed for 1,000 Rawbux.");
       setNewName("");
@@ -48,7 +48,7 @@ function SettingsPage() {
 
   async function saveDescription() {
     const { data, error } = await supabase.rpc("update_description", { _desc: desc });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     if (data === "ok") {
       toast.success("Description saved.");
       await refresh();
@@ -56,9 +56,9 @@ function SettingsPage() {
   }
 
   async function changePassword() {
-    if (pw.length < 6) return toast.error("Password must be at least 6 characters.");
+    if (pw.length < 6) { toast.error("Password must be at least 6 characters."); return; }
     const { error } = await supabase.auth.updateUser({ password: pw });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setPw("");
     toast.success("Password updated.");
   }

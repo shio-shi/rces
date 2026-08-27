@@ -105,10 +105,13 @@ function ItemPage() {
   }
 
   async function list(userItemId: string, price: number | null) {
-    const { data: res, error } = await supabase.rpc("set_resale", {
-      _user_item_id: userItemId,
-      _price: price,
-    });
+    const { data: res, error } = await supabase.rpc(
+      "set_resale",
+      { _user_item_id: userItemId, _price: price } as unknown as {
+        _user_item_id: string;
+        _price: number;
+      },
+    );
     if (error) {
       toast.error(error.message);
       return;
