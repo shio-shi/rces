@@ -15,6 +15,7 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PromocodesRouteImport } from './routes/promocodes'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TradeRouteImport } from './routes/trade'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
@@ -50,6 +51,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PromocodesRoute = PromocodesRouteImport.update({
+  id: '/promocodes',
+  path: '/promocodes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
+  '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
   '/trade': typeof TradeRoute
   '/item/$itemId': typeof ItemItemIdRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
+  '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
   '/trade': typeof TradeRoute
   '/item/$itemId': typeof ItemItemIdRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
   '/profile': typeof ProfileRoute
+  '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
   '/trade': typeof TradeRoute
   '/item/$itemId': typeof ItemItemIdRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/friends'
     | '/inventory'
     | '/profile'
+    | '/promocodes'
     | '/settings'
     | '/trade'
     | '/item/$itemId'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/friends'
     | '/inventory'
     | '/profile'
+    | '/promocodes'
     | '/settings'
     | '/trade'
     | '/item/$itemId'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/friends'
     | '/inventory'
     | '/profile'
+    | '/promocodes'
     | '/settings'
     | '/trade'
     | '/item/$itemId'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   FriendsRoute: typeof FriendsRoute
   InventoryRoute: typeof InventoryRoute
   ProfileRoute: typeof ProfileRoute
+  PromocodesRoute: typeof PromocodesRoute
   SettingsRoute: typeof SettingsRoute
   TradeRoute: typeof TradeRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/promocodes': {
+      id: '/promocodes'
+      path: '/promocodes'
+      fullPath: '/promocodes'
+      preLoaderRoute: typeof PromocodesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   FriendsRoute: FriendsRoute,
   InventoryRoute: InventoryRoute,
   ProfileRoute: ProfileRoute,
+  PromocodesRoute: PromocodesRoute,
   SettingsRoute: SettingsRoute,
   TradeRoute: TradeRoute,
   ItemItemIdRoute: ItemItemIdRoute,
