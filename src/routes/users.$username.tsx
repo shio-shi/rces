@@ -136,21 +136,36 @@ function UserPage() {
             </p>
           </div>
           {!isMe && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {rel?.friends ? (
+                <button
+                  onClick={removeFriend}
+                  className="rounded-md border border-border px-4 py-2 text-sm font-bold hover:bg-surface"
+                >
+                  Unfriend
+                </button>
+              ) : (
+                <button
+                  onClick={addFriend}
+                  disabled={rel?.requested}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {rel?.requested ? "Request Sent" : "Add Friend"}
+                </button>
+              )}
               <button
-                disabled
-                title="Friends launch in the next update"
-                className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground opacity-60"
+                onClick={toggleFollow}
+                className="rounded-md border border-border px-4 py-2 text-sm font-bold hover:bg-surface"
               >
-                Add Friend
+                {rel?.following ? "Unfollow" : "Follow"}
               </button>
-              <button
-                disabled
-                title="Trading launches in the next update"
-                className="rounded-md border border-border px-4 py-2 text-sm font-bold opacity-60"
+              <Link
+                to="/trade/new/$username"
+                params={{ username: data.profile.username }}
+                className="rounded-md border border-border px-4 py-2 text-sm font-bold hover:bg-surface"
               >
                 Trade Items
-              </button>
+              </Link>
             </div>
           )}
         </div>
