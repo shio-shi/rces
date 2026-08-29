@@ -1,9 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { ItemCard } from "@/components/ItemCard";
 import { useAuth } from "@/lib/auth";
+import { rpcMessage } from "@/lib/social";
 import type { Item } from "@/lib/format";
 
 export const Route = createFileRoute("/users/$username")({
@@ -45,6 +47,61 @@ function UserPage() {
     },
   });
 
+  const other = data?.profile.id;
+  const qc = useQueryClient();
+  const { data: rel } = useQuery({
+    enabled: !!other && !!me && other !== me.id,
+    queryKey: ["relationship", me?.id, other],
+    queryFn: async () => {
+      const [fs, req, fol] = await Promise.all([
+        supabase
+          .from("friendships")
+          .select("id")
+          .eq("user_a", me!.id < other! ? me!.id : other!)
+          .eq("user_b", me!.id < other! ? other! : me!.id)
+          .maybeSingle(),
+        supabase
+          .from("friend_requests")
+          .select("id")
+          .eq("sender_id", me!.id)
+          .eq("receiver_id", other!)
+          .eq("status", "pending")
+          .maybeSingle(),
+        supabase
+          .from("follows")
+          .select("id")
+          .eq("follower_id", me!.id)
+          .eq("following_id", other!)
+          .maybeSingle(),
+      ]);
+      return { friends: !!fs.data, requested: !!req.data, following: !!fol.data };
+    },
+  });
+
+  const refreshRel = () => qc.invalidateQueries({ queryKey: ["relationship"] });
+
+  async function addFriend() {
+    const msg = await rpcMessage(await supabase.rpc("send_friend_request", { _target: other! }));
+    if (msg !== "ok") toast.error(msg);
+    else toast.success("Friend request sent.");
+    refreshRel();
+  }
+
+  async function removeFriend() {
+    const msg = await rpcMessage(await supabase.rpc("remove_friend", { _other: other! }));
+    if (msg !== "ok") toast.error(msg);
+    else toast.success("Friend removed.");
+    refreshRel();
+  }
+
+  async function toggleFollow() {
+    const msg = await rpcMessage(
+      await supabase.rpc("set_follow", { _target: other!, _follow: !rel?.following }),
+    );
+    if (msg !== "ok") toast.error(msg);
+    refreshRel();
+  }
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -79,21 +136,36 @@ function UserPage() {
             </p>
           </div>
           {!isMe && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {rel?.friends ? (
+                <button
+                  onClick={removeFriend}
+                  className="rounded-md border border-border px-4 py-2 text-sm font-bold hover:bg-surface"
+                >
+                  Unfriend
+                </button>
+              ) : (
+                <button
+                  onClick={addFriend}
+                  disabled={rel?.requested}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {rel?.requested ? "Request Sent" : "Add Friend"}
+                </button>
+              )}
               <button
-                disabled
-                title="Friends launch in the next update"
-                className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground opacity-60"
+                onClick={toggleFollow}
+                className="rounded-md border border-border px-4 py-2 text-sm font-bold hover:bg-surface"
               >
-                Add Friend
+                {rel?.following ? "Unfollow" : "Follow"}
               </button>
-              <button
-                disabled
-                title="Trading launches in the next update"
-                className="rounded-md border border-border px-4 py-2 text-sm font-bold opacity-60"
+              <Link
+                to="/trade/new/$username"
+                params={{ username: data.profile.username }}
+                className="rounded-md border border-border px-4 py-2 text-sm font-bold hover:bg-surface"
               >
                 Trade Items
-              </button>
+              </Link>
             </div>
           )}
         </div>
