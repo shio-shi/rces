@@ -47,6 +47,61 @@ function UserPage() {
     },
   });
 
+  const other = data?.profile.id;
+  const qc = useQueryClient();
+  const { data: rel } = useQuery({
+    enabled: !!other && !!me && other !== me.id,
+    queryKey: ["relationship", me?.id, other],
+    queryFn: async () => {
+      const [fs, req, fol] = await Promise.all([
+        supabase
+          .from("friendships")
+          .select("id")
+          .eq("user_a", me!.id < other! ? me!.id : other!)
+          .eq("user_b", me!.id < other! ? other! : me!.id)
+          .maybeSingle(),
+        supabase
+          .from("friend_requests")
+          .select("id")
+          .eq("sender_id", me!.id)
+          .eq("receiver_id", other!)
+          .eq("status", "pending")
+          .maybeSingle(),
+        supabase
+          .from("follows")
+          .select("id")
+          .eq("follower_id", me!.id)
+          .eq("following_id", other!)
+          .maybeSingle(),
+      ]);
+      return { friends: !!fs.data, requested: !!req.data, following: !!fol.data };
+    },
+  });
+
+  const refreshRel = () => qc.invalidateQueries({ queryKey: ["relationship"] });
+
+  async function addFriend() {
+    const msg = await rpcMessage(await supabase.rpc("send_friend_request", { _target: other! }));
+    if (msg !== "ok") toast.error(msg);
+    else toast.success("Friend request sent.");
+    refreshRel();
+  }
+
+  async function removeFriend() {
+    const msg = await rpcMessage(await supabase.rpc("remove_friend", { _other: other! }));
+    if (msg !== "ok") toast.error(msg);
+    else toast.success("Friend removed.");
+    refreshRel();
+  }
+
+  async function toggleFollow() {
+    const msg = await rpcMessage(
+      await supabase.rpc("set_follow", { _target: other!, _follow: !rel?.following }),
+    );
+    if (msg !== "ok") toast.error(msg);
+    refreshRel();
+  }
+
   if (isLoading) {
     return (
       <AppLayout>
