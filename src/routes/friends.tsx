@@ -29,6 +29,10 @@ const TABS = ["Friend Requests", "Friends", "Followers", "Following"] as const;
 
 type Row = { key: string; profile: MiniProfile; action?: React.ReactNode };
 
+function compact(list: (MiniProfile | undefined)[]): MiniProfile[] {
+  return list.filter((p): p is MiniProfile => !!p);
+}
+
 function FriendsPage() {
   const [tab, setTab] = useState<string>(TABS[0]);
   const { session } = useAuth();
