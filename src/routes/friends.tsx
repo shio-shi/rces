@@ -116,33 +116,31 @@ function FriendsPage() {
           ),
         }));
     } else if (tab === "Friends") {
-      rows = data.friends
-        .filter(Boolean)
-        .map((p) => ({
-          key: p.id,
-          profile: p,
-          action: (
-            <div className="flex gap-2">
-              <Link
-                to="/trade_/new/$username"
-                params={{ username: p.username }}
-                className="rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90"
-              >
-                Trade
-              </Link>
-              <button
-                onClick={() => unfriend(p.id)}
-                className="rounded-md border border-border px-3 py-1.5 text-xs font-bold hover:bg-surface"
-              >
-                Unfriend
-              </button>
-            </div>
-          ),
-        }));
+      rows = compact(data.friends).map((p) => ({
+        key: p.id,
+        profile: p,
+        action: (
+          <div className="flex gap-2">
+            <Link
+              to="/trade/new/$username"
+              params={{ username: p.username }}
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90"
+            >
+              Trade
+            </Link>
+            <button
+              onClick={() => unfriend(p.id)}
+              className="rounded-md border border-border px-3 py-1.5 text-xs font-bold hover:bg-surface"
+            >
+              Unfriend
+            </button>
+          </div>
+        ),
+      }));
     } else if (tab === "Followers") {
-      rows = data.followers.filter(Boolean).map((p) => ({ key: p.id, profile: p }));
+      rows = compact(data.followers).map((p) => ({ key: p.id, profile: p }));
     } else {
-      rows = data.following.filter(Boolean).map((p) => ({
+      rows = compact(data.following).map((p) => ({
         key: p.id,
         profile: p,
         action: (
