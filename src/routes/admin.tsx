@@ -175,9 +175,13 @@ function AdminPage() {
   }
 
   async function doFind() {
-    const u = (await findUser({ data: { username: search } })) as FoundUser | null;
-    setUser(u);
-    if (!u) toast.error("User not found.");
+    try {
+      const u = (await findUser({ data: { username: search } })) as FoundUser | null;
+      setUser(u);
+      if (!u) toast.error("User not found.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   }
 
   if (authed === null) return null;
