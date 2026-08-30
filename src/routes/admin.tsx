@@ -367,6 +367,82 @@ function AdminPage() {
           </div>
         )}
       </div>
+
+      <div className="rb-card mt-4 p-5">
+        <h2 className="rb-heading">Promocodes</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Code (e.g. RAWBLOX2021)"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+          <input
+            value={codeRawbux}
+            onChange={(e) => setCodeRawbux(e.target.value)}
+            inputMode="numeric"
+            placeholder="Rawbux reward"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+          <select
+            value={codeItem}
+            onChange={(e) => setCodeItem(e.target.value)}
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm"
+          >
+            <option value="">No item reward</option>
+            {itemOptions.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
+          </select>
+          <input
+            value={codeMax}
+            onChange={(e) => setCodeMax(e.target.value)}
+            inputMode="numeric"
+            placeholder="Max uses (blank = unlimited)"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+          <input
+            value={codeDays}
+            onChange={(e) => setCodeDays(e.target.value)}
+            inputMode="numeric"
+            placeholder="Expires in days (blank = never)"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+        </div>
+        <button
+          onClick={doCreateCode}
+          className="mt-3 rounded-md bg-buy px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
+        >
+          Create promocode
+        </button>
+
+        {codes.length > 0 && (
+          <ul className="mt-4 divide-y divide-border border-t border-border">
+            {codes.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                <span className="font-bold">{c.code}</span>
+                <span className="text-muted-foreground">
+                  {c.rawbux_reward} Rawbux · {c.uses}
+                  {c.max_uses ? `/${c.max_uses}` : ""} uses
+                  {c.expires_at ? ` · expires ${new Date(c.expires_at).toLocaleDateString()}` : ""}
+                  {c.is_active ? "" : " · disabled"}
+                </span>
+                <button
+                  onClick={async () => {
+                    await setCodeActive({ data: { id: c.id, active: !c.is_active } });
+                    await reloadCodes();
+                  }}
+                  className="ml-auto rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
+                >
+                  {c.is_active ? "Disable" : "Enable"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </AppLayout>
   );
 }
