@@ -61,6 +61,10 @@ function AdminPage() {
   const ban = useServerFn(adminBanUser);
   const unban = useServerFn(adminUnbanUser);
   const grant = useServerFn(adminGrantRawbux);
+  const listCodes = useServerFn(adminListPromocodes);
+  const createCode = useServerFn(adminCreatePromocode);
+  const setCodeActive = useServerFn(adminSetPromocodeActive);
+  const listItems = useServerFn(adminListItems);
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pw, setPw] = useState("");
@@ -79,9 +83,46 @@ function AdminPage() {
   const [duration, setDuration] = useState("1d");
   const [amount, setAmount] = useState("100");
 
+  const [code, setCode] = useState("");
+  const [codeRawbux, setCodeRawbux] = useState("100");
+  const [codeItem, setCodeItem] = useState("");
+  const [codeMax, setCodeMax] = useState("");
+  const [codeDays, setCodeDays] = useState("");
+  const [codes, setCodes] = useState<Promocode[]>([]);
+  const [itemOptions, setItemOptions] = useState<{ id: string; name: string }[]>([]);
+
   useEffect(() => {
     status().then((r) => setAuthed(r.admin));
   }, [status]);
+
+  const reloadCodes = useCallback(async () => {
+    setCodes((await listCodes()) as Promocode[]);
+  }, [listCodes]);
+
+  useEffect(() => {
+    if (!authed) return;
+    void reloadCodes();
+    void listItems().then((r) => setItemOptions(r as { id: string; name: string }[]));
+  }, [authed, reloadCodes, listItems]);
+
+  async function doCreateCode() {
+    try {
+      await createCode({
+        data: {
+          code,
+          rawbux: Number(codeRawbux) || 0,
+          itemId: codeItem || null,
+          maxUses: codeMax ? Number(codeMax) : null,
+          expiresInDays: codeDays ? Number(codeDays) : null,
+        },
+      });
+      toast.success("Promocode created.");
+      setCode("");
+      await reloadCodes();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   async function doLogin() {
     const r = await login({ data: { password: pw } });
