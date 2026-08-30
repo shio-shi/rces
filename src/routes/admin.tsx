@@ -1,14 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import {
   adminBanUser,
+  adminCreatePromocode,
   adminFindUser,
   adminGrantRawbux,
+  adminListItems,
+  adminListPromocodes,
   adminLogin,
   adminLogout,
+  adminSetPromocodeActive,
   adminStatus,
   adminUnbanUser,
   publishItem,
@@ -48,6 +52,18 @@ type FoundUser = {
   ban_until: string | null;
 };
 
+type Promocode = {
+  id: string;
+  code: string;
+  rawbux_reward: number;
+  item_id: string | null;
+  max_uses: number | null;
+  uses: number;
+  expires_at: string | null;
+  is_active: boolean;
+};
+
+
 function AdminPage() {
   const status = useServerFn(adminStatus);
   const login = useServerFn(adminLogin);
@@ -57,6 +73,10 @@ function AdminPage() {
   const ban = useServerFn(adminBanUser);
   const unban = useServerFn(adminUnbanUser);
   const grant = useServerFn(adminGrantRawbux);
+  const listCodes = useServerFn(adminListPromocodes);
+  const createCode = useServerFn(adminCreatePromocode);
+  const setCodeActive = useServerFn(adminSetPromocodeActive);
+  const listItems = useServerFn(adminListItems);
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pw, setPw] = useState("");
@@ -75,9 +95,46 @@ function AdminPage() {
   const [duration, setDuration] = useState("1d");
   const [amount, setAmount] = useState("100");
 
+  const [code, setCode] = useState("");
+  const [codeRawbux, setCodeRawbux] = useState("100");
+  const [codeItem, setCodeItem] = useState("");
+  const [codeMax, setCodeMax] = useState("");
+  const [codeDays, setCodeDays] = useState("");
+  const [codes, setCodes] = useState<Promocode[]>([]);
+  const [itemOptions, setItemOptions] = useState<{ id: string; name: string }[]>([]);
+
   useEffect(() => {
     status().then((r) => setAuthed(r.admin));
   }, [status]);
+
+  const reloadCodes = useCallback(async () => {
+    setCodes((await listCodes()) as Promocode[]);
+  }, [listCodes]);
+
+  useEffect(() => {
+    if (!authed) return;
+    void reloadCodes();
+    void listItems().then((r) => setItemOptions(r as { id: string; name: string }[]));
+  }, [authed, reloadCodes, listItems]);
+
+  async function doCreateCode() {
+    try {
+      await createCode({
+        data: {
+          code,
+          rawbux: Number(codeRawbux) || 0,
+          itemId: codeItem || null,
+          maxUses: codeMax ? Number(codeMax) : null,
+          expiresInDays: codeDays ? Number(codeDays) : null,
+        },
+      });
+      toast.success("Promocode created.");
+      setCode("");
+      await reloadCodes();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   async function doLogin() {
     const r = await login({ data: { password: pw } });
@@ -308,6 +365,82 @@ function AdminPage() {
               </button>
             </div>
           </div>
+        )}
+      </div>
+
+      <div className="rb-card mt-4 p-5">
+        <h2 className="rb-heading">Promocodes</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Code (e.g. RAWBLOX2021)"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+          <input
+            value={codeRawbux}
+            onChange={(e) => setCodeRawbux(e.target.value)}
+            inputMode="numeric"
+            placeholder="Rawbux reward"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+          <select
+            value={codeItem}
+            onChange={(e) => setCodeItem(e.target.value)}
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm"
+          >
+            <option value="">No item reward</option>
+            {itemOptions.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
+          </select>
+          <input
+            value={codeMax}
+            onChange={(e) => setCodeMax(e.target.value)}
+            inputMode="numeric"
+            placeholder="Max uses (blank = unlimited)"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+          <input
+            value={codeDays}
+            onChange={(e) => setCodeDays(e.target.value)}
+            inputMode="numeric"
+            placeholder="Expires in days (blank = never)"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+        </div>
+        <button
+          onClick={doCreateCode}
+          className="mt-3 rounded-md bg-buy px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
+        >
+          Create promocode
+        </button>
+
+        {codes.length > 0 && (
+          <ul className="mt-4 divide-y divide-border border-t border-border">
+            {codes.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                <span className="font-bold">{c.code}</span>
+                <span className="text-muted-foreground">
+                  {c.rawbux_reward} Rawbux · {c.uses}
+                  {c.max_uses ? `/${c.max_uses}` : ""} uses
+                  {c.expires_at ? ` · expires ${new Date(c.expires_at).toLocaleDateString()}` : ""}
+                  {c.is_active ? "" : " · disabled"}
+                </span>
+                <button
+                  onClick={async () => {
+                    await setCodeActive({ data: { id: c.id, active: !c.is_active } });
+                    await reloadCodes();
+                  }}
+                  className="ml-auto rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
+                >
+                  {c.is_active ? "Disable" : "Enable"}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </AppLayout>
