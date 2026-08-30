@@ -8,7 +8,9 @@ function sessionConfig() {
     password: process.env["SESSION_SECRET"]!,
     name: "rawblox-admin",
     maxAge: 60 * 60 * 8,
-    cookie: { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/" },
+    // The app renders inside the Lovable preview iframe (third-party context),
+    // where SameSite=Lax cookies are dropped. None + Secure keeps the session.
+    cookie: { httpOnly: true, secure: true, sameSite: "none" as const, path: "/" },
   };
 }
 
