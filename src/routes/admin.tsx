@@ -52,6 +52,18 @@ type FoundUser = {
   ban_until: string | null;
 };
 
+type Promocode = {
+  id: string;
+  code: string;
+  rawbux_reward: number;
+  item_id: string | null;
+  max_uses: number | null;
+  uses: number;
+  expires_at: string | null;
+  is_active: boolean;
+};
+
+
 function AdminPage() {
   const status = useServerFn(adminStatus);
   const login = useServerFn(adminLogin);
