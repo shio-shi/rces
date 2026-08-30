@@ -138,10 +138,18 @@ function AdminPage() {
 
   async function doLogin() {
     const r = await login({ data: { password: pw } });
-    if (r.ok) {
-      setAuthed(true);
-      setPw("");
-    } else toast.error("Incorrect password.");
+    if (!r.ok) {
+      toast.error("Incorrect password.");
+      return;
+    }
+    // Confirm the admin session cookie actually stuck before showing the panel.
+    const check = await status();
+    if (!check.admin) {
+      toast.error("Could not start an admin session. Try opening the preview in a new tab.");
+      return;
+    }
+    setAuthed(true);
+    setPw("");
   }
 
   async function doPublish() {
@@ -167,9 +175,13 @@ function AdminPage() {
   }
 
   async function doFind() {
-    const u = (await findUser({ data: { username: search } })) as FoundUser | null;
-    setUser(u);
-    if (!u) toast.error("User not found.");
+    try {
+      const u = (await findUser({ data: { username: search } })) as FoundUser | null;
+      setUser(u);
+      if (!u) toast.error("User not found.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   }
 
   if (authed === null) return null;
