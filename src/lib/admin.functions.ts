@@ -123,3 +123,68 @@ export const adminGrantRawbux = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export const adminListPromocodes = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("./admin.server");
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("promocodes")
+    .select("id, code, rawbux_reward, item_id, max_uses, uses, expires_at, is_active")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  return data ?? [];
+});
+
+export const adminCreatePromocode = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      code: string;
+      rawbux: number;
+      itemId: string | null;
+      maxUses: number | null;
+      expiresInDays: number | null;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("promocodes").insert({
+      code: data.code.trim(),
+      rawbux_reward: Math.max(0, Math.round(data.rawbux)),
+      item_id: data.itemId || null,
+      max_uses: data.maxUses ?? null,
+      expires_at: data.expiresInDays
+        ? new Date(Date.now() + data.expiresInDays * 86400000).toISOString()
+        : null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminSetPromocodeActive = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string; active: boolean }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("promocodes")
+      .update({ is_active: data.active })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminListItems = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("./admin.server");
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("items")
+    .select("id, name")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  return data ?? [];
+});
