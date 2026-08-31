@@ -96,6 +96,7 @@ export type Database = {
           price: number
           rap: number
           sale_ends_at: string | null
+          stock: number | null
         }
         Insert: {
           class?: Database["public"]["Enums"]["item_class"]
@@ -109,6 +110,7 @@ export type Database = {
           price?: number
           rap?: number
           sale_ends_at?: string | null
+          stock?: number | null
         }
         Update: {
           class?: Database["public"]["Enums"]["item_class"]
@@ -122,6 +124,7 @@ export type Database = {
           price?: number
           rap?: number
           sale_ends_at?: string | null
+          stock?: number | null
         }
         Relationships: []
       }
