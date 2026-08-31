@@ -183,8 +183,35 @@ export const adminListItems = createServerFn({ method: "GET" }).handler(async ()
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("items")
-    .select("id, name")
+    .select("id, name, kind, class, price, copies_sold")
     .order("created_at", { ascending: false })
     .limit(200);
   return data ?? [];
 });
+
+export const adminDeleteItem = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Remove everything that references the item first.
+    const { error: e1 } = await supabaseAdmin
+      .from("trade_items")
+      .delete()
+      .eq("item_id", data.itemId);
+    if (e1) throw new Error(e1.message);
+    const { error: e2 } = await supabaseAdmin
+      .from("user_items")
+      .delete()
+      .eq("item_id", data.itemId);
+    if (e2) throw new Error(e2.message);
+    const { error: e3 } = await supabaseAdmin
+      .from("promocodes")
+      .update({ item_id: null })
+      .eq("item_id", data.itemId);
+    if (e3) throw new Error(e3.message);
+    const { error } = await supabaseAdmin.from("items").delete().eq("id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });

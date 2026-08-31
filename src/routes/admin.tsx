@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/AppLayout";
 import {
   adminBanUser,
   adminCreatePromocode,
+  adminDeleteItem,
   adminFindUser,
   adminGrantRawbux,
   adminListItems,
@@ -63,6 +64,14 @@ type Promocode = {
   is_active: boolean;
 };
 
+type AdminItem = {
+  id: string;
+  name: string;
+  kind: string;
+  class: string;
+  price: number;
+  copies_sold: number;
+};
 
 function AdminPage() {
   const status = useServerFn(adminStatus);
@@ -77,6 +86,7 @@ function AdminPage() {
   const createCode = useServerFn(adminCreatePromocode);
   const setCodeActive = useServerFn(adminSetPromocodeActive);
   const listItems = useServerFn(adminListItems);
+  const deleteItem = useServerFn(adminDeleteItem);
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pw, setPw] = useState("");
@@ -101,7 +111,7 @@ function AdminPage() {
   const [codeMax, setCodeMax] = useState("");
   const [codeDays, setCodeDays] = useState("");
   const [codes, setCodes] = useState<Promocode[]>([]);
-  const [itemOptions, setItemOptions] = useState<{ id: string; name: string }[]>([]);
+  const [itemOptions, setItemOptions] = useState<AdminItem[]>([]);
 
   useEffect(() => {
     status().then((r) => setAuthed(r.admin));
@@ -111,11 +121,15 @@ function AdminPage() {
     setCodes((await listCodes()) as Promocode[]);
   }, [listCodes]);
 
+  const reloadItems = useCallback(async () => {
+    setItemOptions((await listItems()) as AdminItem[]);
+  }, [listItems]);
+
   useEffect(() => {
     if (!authed) return;
     void reloadCodes();
-    void listItems().then((r) => setItemOptions(r as { id: string; name: string }[]));
-  }, [authed, reloadCodes, listItems]);
+    void reloadItems();
+  }, [authed, reloadCodes, reloadItems]);
 
   async function doCreateCode() {
     try {
@@ -169,6 +183,18 @@ function AdminPage() {
       setName("");
       setDescription("");
       setImageUrl("");
+      await reloadItems();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function doDeleteItem(item: AdminItem) {
+    if (!window.confirm(`Delete "${item.name}" from the catalog? Owners will lose their copies.`)) return;
+    try {
+      await deleteItem({ data: { itemId: item.id } });
+      toast.success("Item deleted.");
+      await reloadItems();
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -449,6 +475,31 @@ function AdminPage() {
                   className="ml-auto rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
                 >
                   {c.is_active ? "Disable" : "Enable"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rb-card mt-4 p-5">
+        <h2 className="rb-heading">Catalog items</h2>
+        {itemOptions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No items published yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {itemOptions.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                <span className="font-bold">{i.name}</span>
+                <span className="capitalize text-muted-foreground">
+                  {i.kind} · {i.class === "limitedu" ? "Limited U" : i.class} · {i.price.toLocaleString("en-US")} Rawbux
+                  {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
+                </span>
+                <button
+                  onClick={() => doDeleteItem(i)}
+                  className="ml-auto rounded-md bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground hover:opacity-90"
+                >
+                  Delete
                 </button>
               </li>
             ))}
