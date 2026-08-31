@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/AppLayout";
 import {
   adminBanUser,
   adminCreatePromocode,
+  adminDeleteItem,
   adminFindUser,
   adminGrantRawbux,
   adminListItems,
@@ -63,6 +64,14 @@ type Promocode = {
   is_active: boolean;
 };
 
+type AdminItem = {
+  id: string;
+  name: string;
+  kind: string;
+  class: string;
+  price: number;
+  copies_sold: number;
+};
 
 function AdminPage() {
   const status = useServerFn(adminStatus);
