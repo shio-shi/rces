@@ -34,15 +34,21 @@ export const publishItem = createServerFn({ method: "POST" })
       imageUrl: string;
       price: number;
       timerHours: number | null;
+      timerMinutes?: number | null;
+      timerSeconds?: number | null;
     }) => data,
   )
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const totalSeconds =
+      (data.timerHours ?? 0) * 3600 +
+      (data.timerMinutes ?? 0) * 60 +
+      (data.timerSeconds ?? 0);
     const saleEnds =
-      data.cls !== "normal" && data.timerHours
-        ? new Date(Date.now() + data.timerHours * 3600000).toISOString()
+      data.cls !== "normal" && totalSeconds > 0
+        ? new Date(Date.now() + totalSeconds * 1000).toISOString()
         : null;
     const { error } = await supabaseAdmin.from("items").insert({
       name: data.name.trim(),
