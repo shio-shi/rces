@@ -481,6 +481,31 @@ function AdminPage() {
           </ul>
         )}
       </div>
+
+      <div className="rb-card mt-4 p-5">
+        <h2 className="rb-heading">Catalog items</h2>
+        {itemOptions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No items published yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {itemOptions.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                <span className="font-bold">{i.name}</span>
+                <span className="capitalize text-muted-foreground">
+                  {i.kind} · {i.class === "limitedu" ? "Limited U" : i.class} · {i.price.toLocaleString("en-US")} Rawbux
+                  {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
+                </span>
+                <button
+                  onClick={() => doDeleteItem(i)}
+                  className="ml-auto rounded-md bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground hover:opacity-90"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </AppLayout>
   );
 }
