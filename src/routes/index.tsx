@@ -45,7 +45,7 @@ function HomePage() {
           Welcome back{profile ? `, ${profile.username}` : ""}!
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          You collect 100 free Rawbux every 24 hours just for logging in.
+          You collect 100 free Rawribux every 24 hours just for logging in.
         </p>
       </div>
 
