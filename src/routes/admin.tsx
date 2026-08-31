@@ -97,7 +97,9 @@ function AdminPage() {
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [price, setPrice] = useState("100");
-  const [timer, setTimer] = useState("24");
+  const [timerH, setTimerH] = useState("24");
+  const [timerM, setTimerM] = useState("0");
+  const [timerS, setTimerS] = useState("0");
 
   const [search, setSearch] = useState("");
   const [user, setUser] = useState<FoundUser | null>(null);
@@ -296,13 +298,29 @@ function AdminPage() {
             className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
           />
           {cls !== "normal" && (
-            <input
-              value={timer}
-              onChange={(e) => setTimer(e.target.value)}
-              placeholder="Sale timer (hours)"
-              inputMode="numeric"
-              className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                value={timerH}
+                onChange={(e) => setTimerH(e.target.value)}
+                placeholder="Hours"
+                inputMode="numeric"
+                className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+              />
+              <input
+                value={timerM}
+                onChange={(e) => setTimerM(e.target.value)}
+                placeholder="Minutes"
+                inputMode="numeric"
+                className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+              />
+              <input
+                value={timerS}
+                onChange={(e) => setTimerS(e.target.value)}
+                placeholder="Seconds"
+                inputMode="numeric"
+                className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+              />
+            </div>
           )}
           <textarea
             value={description}
