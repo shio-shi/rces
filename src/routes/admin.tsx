@@ -178,7 +178,9 @@ function AdminPage() {
           description,
           imageUrl,
           price: Number(price) || 0,
-          timerHours: cls === "normal" ? null : Number(timer) || 24,
+          timerHours: cls === "normal" ? null : Number(timerH) || 0,
+          timerMinutes: cls === "normal" ? null : Number(timerM) || 0,
+          timerSeconds: cls === "normal" ? null : Number(timerS) || 0,
         },
       });
       toast.success("Item published.");
