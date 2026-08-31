@@ -85,7 +85,7 @@ function AuthPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border bg-nav">
         <div className="mx-auto flex h-14 max-w-[1200px] items-center px-4">
-          <span className="text-xl font-extrabold tracking-tight">RAWBLOX</span>
+          <span className="text-xl font-extrabold tracking-tight">Rawrion Economy Simulator</span>
         </div>
       </header>
       <div className="flex flex-1 items-center justify-center px-4 py-10">
