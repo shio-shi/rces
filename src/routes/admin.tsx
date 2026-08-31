@@ -86,6 +86,7 @@ function AdminPage() {
   const createCode = useServerFn(adminCreatePromocode);
   const setCodeActive = useServerFn(adminSetPromocodeActive);
   const listItems = useServerFn(adminListItems);
+  const deleteItem = useServerFn(adminDeleteItem);
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pw, setPw] = useState("");
@@ -110,7 +111,7 @@ function AdminPage() {
   const [codeMax, setCodeMax] = useState("");
   const [codeDays, setCodeDays] = useState("");
   const [codes, setCodes] = useState<Promocode[]>([]);
-  const [itemOptions, setItemOptions] = useState<{ id: string; name: string }[]>([]);
+  const [itemOptions, setItemOptions] = useState<AdminItem[]>([]);
 
   useEffect(() => {
     status().then((r) => setAuthed(r.admin));
@@ -120,11 +121,15 @@ function AdminPage() {
     setCodes((await listCodes()) as Promocode[]);
   }, [listCodes]);
 
+  const reloadItems = useCallback(async () => {
+    setItemOptions((await listItems()) as AdminItem[]);
+  }, [listItems]);
+
   useEffect(() => {
     if (!authed) return;
     void reloadCodes();
-    void listItems().then((r) => setItemOptions(r as { id: string; name: string }[]));
-  }, [authed, reloadCodes, listItems]);
+    void reloadItems();
+  }, [authed, reloadCodes, reloadItems]);
 
   async function doCreateCode() {
     try {
