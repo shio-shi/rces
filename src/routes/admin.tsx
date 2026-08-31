@@ -183,6 +183,18 @@ function AdminPage() {
       setName("");
       setDescription("");
       setImageUrl("");
+      await reloadItems();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function doDeleteItem(item: AdminItem) {
+    if (!window.confirm(`Delete "${item.name}" from the catalog? Owners will lose their copies.`)) return;
+    try {
+      await deleteItem({ data: { itemId: item.id } });
+      toast.success("Item deleted.");
+      await reloadItems();
     } catch (e) {
       toast.error((e as Error).message);
     }
