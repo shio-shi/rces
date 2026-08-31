@@ -94,7 +94,7 @@ function AuthPage() {
             {mode === "login" ? "Login" : "Sign Up"}
           </h1>
           <p className="mt-1 text-center text-sm text-muted-foreground">
-            {mode === "login" ? "Welcome back to Rawblox." : "Create your Rawblox account."}
+            {mode === "login" ? "Welcome back to Rawblox." : "Create your RCES account."}
           </p>
           <form onSubmit={submit} className="mt-5 space-y-3">
             <div>
