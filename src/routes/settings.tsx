@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const { profile, refresh } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [newName, setNewName] = useState("");
@@ -130,6 +132,32 @@ function SettingsPage() {
               className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90"
             >
               Update password
+            </button>
+          </div>
+        </section>
+
+        <section className="mb-6">
+          <h2 className="font-semibold">Theme</h2>
+          <div className="mt-1 flex gap-2">
+            <button
+              onClick={() => setTheme("light")}
+              className={`rounded-md border px-4 py-2 text-sm font-bold ${
+                theme === "light"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-card hover:bg-accent"
+              }`}
+            >
+              Light
+            </button>
+            <button
+              onClick={() => setTheme("dark")}
+              className={`rounded-md border px-4 py-2 text-sm font-bold ${
+                theme === "dark"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-card hover:bg-accent"
+              }`}
+            >
+              Dark
             </button>
           </div>
         </section>
