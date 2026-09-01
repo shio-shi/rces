@@ -175,9 +175,10 @@ function ItemPage() {
                   </div>
                   <button
                     onClick={buy}
-                    className="mt-3 rounded-md bg-buy px-6 py-2 text-sm font-bold text-buy-foreground hover:opacity-90"
+                    disabled={buying}
+                    className="mt-3 rounded-md bg-buy px-6 py-2 text-sm font-bold text-buy-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Buy Now
+                    {buying ? "Buying..." : "Buy Now"}
                   </button>
                 </>
               ) : cheapest !== null ? (
