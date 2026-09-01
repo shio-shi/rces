@@ -36,6 +36,7 @@ export const publishItem = createServerFn({ method: "POST" })
       timerHours: number | null;
       timerMinutes?: number | null;
       timerSeconds?: number | null;
+      stock?: number | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -58,6 +59,10 @@ export const publishItem = createServerFn({ method: "POST" })
       image_url: data.imageUrl || null,
       price: Math.max(0, Math.round(data.price)),
       sale_ends_at: saleEnds,
+      stock:
+        data.stock === null || data.stock === undefined
+          ? null
+          : Math.max(0, Math.round(data.stock)),
       rap: Math.max(0, Math.round(data.price)),
     });
     if (error) throw new Error(error.message);

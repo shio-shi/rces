@@ -100,6 +100,7 @@ function AdminPage() {
   const [timerH, setTimerH] = useState("24");
   const [timerM, setTimerM] = useState("0");
   const [timerS, setTimerS] = useState("0");
+  const [stock, setStock] = useState("");
 
   const [search, setSearch] = useState("");
   const [user, setUser] = useState<FoundUser | null>(null);
@@ -181,6 +182,7 @@ function AdminPage() {
           timerHours: cls === "normal" ? null : Number(timerH) || 0,
           timerMinutes: cls === "normal" ? null : Number(timerM) || 0,
           timerSeconds: cls === "normal" ? null : Number(timerS) || 0,
+          stock: cls !== "normal" && stock.trim() !== "" ? Number(stock) || 0 : null,
         },
       });
       toast.success("Item published.");
@@ -300,6 +302,14 @@ function AdminPage() {
             className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
           />
           {cls !== "normal" && (
+            <>
+            <input
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              placeholder="Stock (leave empty for unlimited)"
+              inputMode="numeric"
+              className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+            />
             <div className="flex items-center gap-2">
               <input
                 value={timerH}
@@ -323,6 +333,7 @@ function AdminPage() {
                 className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
               />
             </div>
+            </>
           )}
           <textarea
             value={description}

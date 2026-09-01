@@ -147,6 +147,11 @@ function ItemPage() {
                   Goes limited in {formatCountdown(item.sale_ends_at)}
                 </span>
               )}
+              {!limited && item.class !== "normal" && item.stock !== null && (
+                <span className="font-semibold text-muted-foreground">
+                  Stock: {num(item.stock)} remaining
+                </span>
+              )}
             </div>
 
             <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">
