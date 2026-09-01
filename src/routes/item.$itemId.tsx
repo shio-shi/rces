@@ -38,6 +38,7 @@ function ItemPage() {
   const qc = useQueryClient();
   const [, tick] = useState(0);
   const [resalePrice, setResalePrice] = useState("");
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000);
