@@ -333,6 +333,7 @@ function AdminPage() {
                 className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
               />
             </div>
+            </>
           )}
           <textarea
             value={description}
