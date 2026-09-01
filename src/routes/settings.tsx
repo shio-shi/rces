@@ -27,6 +27,7 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const { profile, refresh } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [newName, setNewName] = useState("");

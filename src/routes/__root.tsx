@@ -93,12 +93,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
+    scripts: [
+      {
+        children: `try{if(localStorage.getItem("rb-theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`,
+      },
+    ],
   }),
-  scripts: () => [
-    {
-      children: `try{if(localStorage.getItem("rb-theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`,
-    },
-  ],
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
