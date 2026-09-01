@@ -136,6 +136,32 @@ function SettingsPage() {
           </div>
         </section>
 
+        <section className="mb-6">
+          <h2 className="font-semibold">Theme</h2>
+          <div className="mt-1 flex gap-2">
+            <button
+              onClick={() => setTheme("light")}
+              className={`rounded-md border px-4 py-2 text-sm font-bold ${
+                theme === "light"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-card hover:bg-accent"
+              }`}
+            >
+              Light
+            </button>
+            <button
+              onClick={() => setTheme("dark")}
+              className={`rounded-md border px-4 py-2 text-sm font-bold ${
+                theme === "dark"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-card hover:bg-accent"
+              }`}
+            >
+              Dark
+            </button>
+          </div>
+        </section>
+
         <section>
           <button
             onClick={logout}
