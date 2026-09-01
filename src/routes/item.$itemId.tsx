@@ -38,6 +38,7 @@ function ItemPage() {
   const qc = useQueryClient();
   const [, tick] = useState(0);
   const [resalePrice, setResalePrice] = useState("");
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000);
@@ -93,15 +94,21 @@ function ItemPage() {
   const mine = owners.filter((o) => o.user_id === profile?.id);
 
   async function buy() {
-    const { data: res, error } = await supabase.rpc("buy_item", { _item_id: itemId });
-    if (error) {
-      toast.error(error.message);
-      return;
+    if (buying) return;
+    setBuying(true);
+    try {
+      const { data: res, error } = await supabase.rpc("buy_item", { _item_id: itemId });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (res === "ok") toast.success(`You bought ${item.name}!`);
+      else toast.error(String(res));
+      await refresh();
+      await qc.invalidateQueries({ queryKey: ["item", itemId] });
+    } finally {
+      setBuying(false);
     }
-    if (res === "ok") toast.success(`You bought ${item.name}!`);
-    else toast.error(String(res));
-    await refresh();
-    await qc.invalidateQueries({ queryKey: ["item", itemId] });
   }
 
   async function list(userItemId: string, price: number | null) {
@@ -168,9 +175,10 @@ function ItemPage() {
                   </div>
                   <button
                     onClick={buy}
-                    className="mt-3 rounded-md bg-buy px-6 py-2 text-sm font-bold text-buy-foreground hover:opacity-90"
+                    disabled={buying}
+                    className="mt-3 rounded-md bg-buy px-6 py-2 text-sm font-bold text-buy-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Buy Now
+                    {buying ? "Buying..." : "Buy Now"}
                   </button>
                 </>
               ) : cheapest !== null ? (
@@ -184,9 +192,10 @@ function ItemPage() {
                   </div>
                   <button
                     onClick={buy}
-                    className="mt-3 rounded-md bg-buy px-6 py-2 text-sm font-bold text-buy-foreground hover:opacity-90"
+                    disabled={buying}
+                    className="mt-3 rounded-md bg-buy px-6 py-2 text-sm font-bold text-buy-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Buy Now
+                    {buying ? "Buying..." : "Buy Now"}
                   </button>
                 </>
               ) : (
