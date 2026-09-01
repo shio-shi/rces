@@ -302,6 +302,14 @@ function AdminPage() {
             className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
           />
           {cls !== "normal" && (
+            <>
+            <input
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              placeholder="Stock (leave empty for unlimited)"
+              inputMode="numeric"
+              className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+            />
             <div className="flex items-center gap-2">
               <input
                 value={timerH}
