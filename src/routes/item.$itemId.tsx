@@ -94,15 +94,21 @@ function ItemPage() {
   const mine = owners.filter((o) => o.user_id === profile?.id);
 
   async function buy() {
-    const { data: res, error } = await supabase.rpc("buy_item", { _item_id: itemId });
-    if (error) {
-      toast.error(error.message);
-      return;
+    if (buying) return;
+    setBuying(true);
+    try {
+      const { data: res, error } = await supabase.rpc("buy_item", { _item_id: itemId });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (res === "ok") toast.success(`You bought ${item.name}!`);
+      else toast.error(String(res));
+      await refresh();
+      await qc.invalidateQueries({ queryKey: ["item", itemId] });
+    } finally {
+      setBuying(false);
     }
-    if (res === "ok") toast.success(`You bought ${item.name}!`);
-    else toast.error(String(res));
-    await refresh();
-    await qc.invalidateQueries({ queryKey: ["item", itemId] });
   }
 
   async function list(userItemId: string, price: number | null) {
