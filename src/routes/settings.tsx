@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
