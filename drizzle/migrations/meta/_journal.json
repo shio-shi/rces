@@ -8,6 +8,13 @@
       "when": 1788181707613,
       "tag": "0000_add_item_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788242642008,
+      "tag": "0001_buy_item_one_copy_onsale",
+      "breakpoints": true
     }
   ]
 }
