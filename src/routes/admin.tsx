@@ -182,6 +182,7 @@ function AdminPage() {
           timerHours: cls === "normal" ? null : Number(timerH) || 0,
           timerMinutes: cls === "normal" ? null : Number(timerM) || 0,
           timerSeconds: cls === "normal" ? null : Number(timerS) || 0,
+          stock: cls !== "normal" && stock.trim() !== "" ? Number(stock) || 0 : null,
         },
       });
       toast.success("Item published.");
