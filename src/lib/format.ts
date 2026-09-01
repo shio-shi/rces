@@ -28,17 +28,16 @@ export type Item = {
   image_url: string | null;
   price: number;
   sale_ends_at: string | null;
+  stock: number | null;
   copies_sold: number;
   rap: number;
   created_at: string;
 };
 
-export function isLimitedNow(item: Pick<Item, "class" | "sale_ends_at">) {
-  return (
-    item.class !== "normal" &&
-    !!item.sale_ends_at &&
-    new Date(item.sale_ends_at).getTime() <= Date.now()
-  );
+export function isLimitedNow(item: Pick<Item, "class" | "sale_ends_at" | "stock">) {
+  if (item.class === "normal") return false;
+  if (item.stock !== null && item.stock <= 0) return true;
+  return !!item.sale_ends_at && new Date(item.sale_ends_at).getTime() <= Date.now();
 }
 
 export function formatCountdown(target: string | null) {

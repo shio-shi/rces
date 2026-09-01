@@ -36,6 +36,7 @@ export const publishItem = createServerFn({ method: "POST" })
       timerHours: number | null;
       timerMinutes?: number | null;
       timerSeconds?: number | null;
+      stock?: number | null;
     }) => data,
   )
   .handler(async ({ data }) => {
