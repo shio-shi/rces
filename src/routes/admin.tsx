@@ -100,6 +100,7 @@ function AdminPage() {
   const [timerH, setTimerH] = useState("24");
   const [timerM, setTimerM] = useState("0");
   const [timerS, setTimerS] = useState("0");
+  const [stock, setStock] = useState("");
 
   const [search, setSearch] = useState("");
   const [user, setUser] = useState<FoundUser | null>(null);
