@@ -7,6 +7,7 @@ import {
   Package,
   Repeat,
   Gift,
+  Trophy,
   Settings,
   Search,
   Loader2,
@@ -22,6 +23,7 @@ const NAV = [
   { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/trade", label: "Trade", icon: Repeat },
   { to: "/promocodes", label: "Promocodes", icon: Gift },
+  { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
 ] as const;
 
 function BanScreen({

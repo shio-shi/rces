@@ -13,6 +13,7 @@ import {
   adminListPromocodes,
   adminLogin,
   adminLogout,
+  adminSetItemRap,
   adminSetPromocodeActive,
   adminStatus,
   adminUnbanUser,
@@ -71,6 +72,7 @@ type AdminItem = {
   class: string;
   price: number;
   copies_sold: number;
+  rap: number;
 };
 
 function AdminPage() {
@@ -526,9 +528,10 @@ function AdminPage() {
                   {i.kind} · {i.class === "limitedu" ? "Limited U" : i.class} · {i.price.toLocaleString("en-US")} Rawbux
                   {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
                 </span>
+                <ValueEditor item={i} onSaved={reloadItems} />
                 <button
                   onClick={() => doDeleteItem(i)}
-                  className="ml-auto rounded-md bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground hover:opacity-90"
+                  className="rounded-md bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground hover:opacity-90"
                 >
                   Delete
                 </button>
@@ -538,5 +541,40 @@ function AdminPage() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function ValueEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void | Promise<void> }) {
+  const setRap = useServerFn(adminSetItemRap);
+  const [value, setValue] = useState(String(item.rap ?? 0));
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="ml-auto flex items-center gap-2">
+      <label className="text-xs font-semibold text-muted-foreground">Value</label>
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="h-7 w-24 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
+      />
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await setRap({ data: { itemId: item.id, rap: Number(value) || 0 } });
+            toast.success("Value updated");
+            await onSaved();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to update value");
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface disabled:opacity-50"
+      >
+        Save
+      </button>
+    </div>
   );
 }

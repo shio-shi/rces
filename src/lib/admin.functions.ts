@@ -194,11 +194,25 @@ export const adminListItems = createServerFn({ method: "GET" }).handler(async ()
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("items")
-    .select("id, name, kind, class, price, copies_sold")
+    .select("id, name, kind, class, price, copies_sold, rap")
     .order("created_at", { ascending: false })
     .limit(200);
   return data ?? [];
 });
+
+export const adminSetItemRap = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string; rap: number }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("items")
+      .update({ rap: Math.max(0, Math.round(data.rap)) })
+      .eq("id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
 
 export const adminDeleteItem = createServerFn({ method: "POST" })
   .inputValidator((data: { itemId: string }) => data)
