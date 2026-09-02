@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PromocodesRouteImport } from './routes/promocodes'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -51,6 +52,11 @@ const FriendsRoute = FriendsRouteImport.update({
 const InventoryRoute = InventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof CatalogRoute
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/catalog': typeof CatalogRoute
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/catalog': typeof CatalogRoute
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/friends'
     | '/inventory'
+    | '/leaderboard'
     | '/profile'
     | '/promocodes'
     | '/settings'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/friends'
     | '/inventory'
+    | '/leaderboard'
     | '/profile'
     | '/promocodes'
     | '/settings'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/friends'
     | '/inventory'
+    | '/leaderboard'
     | '/profile'
     | '/promocodes'
     | '/settings'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   CatalogRoute: typeof CatalogRoute
   FriendsRoute: typeof FriendsRoute
   InventoryRoute: typeof InventoryRoute
+  LeaderboardRoute: typeof LeaderboardRoute
   ProfileRoute: typeof ProfileRoute
   PromocodesRoute: typeof PromocodesRoute
   SettingsRoute: typeof SettingsRoute
@@ -241,6 +254,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/inventory'
       preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -302,6 +322,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogRoute: CatalogRoute,
   FriendsRoute: FriendsRoute,
   InventoryRoute: InventoryRoute,
+  LeaderboardRoute: LeaderboardRoute,
   ProfileRoute: ProfileRoute,
   PromocodesRoute: PromocodesRoute,
   SettingsRoute: SettingsRoute,
