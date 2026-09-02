@@ -531,7 +531,7 @@ function AdminPage() {
                 <ValueEditor item={i} onSaved={reloadItems} />
                 <button
                   onClick={() => doDeleteItem(i)}
-                  className="ml-auto rounded-md bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground hover:opacity-90"
+                  className="rounded-md bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground hover:opacity-90"
                 >
                   Delete
                 </button>
