@@ -25,7 +25,7 @@ export const Route = createFileRoute("/leaderboard")({
   component: LeaderboardPage,
 });
 
-type Row = { id: string; username: string; rap: number; items: number };
+type Row = { id: string; username: string; rap: number; value: number; items: number };
 
 function LeaderboardPage() {
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -34,18 +34,21 @@ function LeaderboardPage() {
     void (async () => {
       const [{ data: profiles }, { data: owned }] = await Promise.all([
         supabase.from("profiles").select("id, username").eq("is_banned", false).limit(1000),
-        supabase.from("user_items").select("user_id, items(rap)").limit(20000),
+        supabase.from("user_items").select("user_id, items(rap, value)").limit(20000),
       ]);
-      const totals = new Map<string, { rap: number; items: number }>();
+      const totals = new Map<string, { rap: number; value: number; items: number }>();
       for (const row of owned ?? []) {
-        const rap = (row as { items: { rap: number } | null }).items?.rap ?? 0;
-        const cur = totals.get(row.user_id) ?? { rap: 0, items: 0 };
-        totals.set(row.user_id, { rap: cur.rap + rap, items: cur.items + 1 });
+        const item = (row as { items: { rap: number; value: number } | null }).items;
+        const rap = item?.rap ?? 0;
+        const value = item?.value ?? 0;
+        const cur = totals.get(row.user_id) ?? { rap: 0, value: 0, items: 0 };
+        totals.set(row.user_id, { rap: cur.rap + rap, value: cur.value + value, items: cur.items + 1 });
       }
       const list = (profiles ?? []).map((p) => ({
         id: p.id,
         username: p.username,
         rap: totals.get(p.id)?.rap ?? 0,
+        value: totals.get(p.id)?.value ?? 0,
         items: totals.get(p.id)?.items ?? 0,
       }));
       list.sort((a, b) => b.rap - a.rap || a.username.localeCompare(b.username));
@@ -58,7 +61,7 @@ function LeaderboardPage() {
       <div className="rb-card p-5">
         <h1 className="rb-heading">Leaderboard</h1>
         <p className="mb-4 text-sm text-muted-foreground">
-          Players ranked by the total value (RAP) of every item they own.
+          Players ranked by the total RAP and value of every item they own.
         </p>
 
         {rows === null ? (
@@ -82,9 +85,15 @@ function LeaderboardPage() {
                 <span className="text-xs text-muted-foreground">
                   {r.items} item{r.items === 1 ? "" : "s"}
                 </span>
-                <span className="ml-auto inline-flex items-center gap-1 font-bold">
-                  <RawbuxIcon className="h-4 w-4" />
-                  {r.rap.toLocaleString("en-US")}
+                <span className="ml-auto inline-flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1 font-bold" title="Total RAP">
+                    <RawbuxIcon className="h-4 w-4" />
+                    {r.rap.toLocaleString("en-US")}
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-bold text-muted-foreground" title="Total value">
+                    <RawbuxIcon className="h-4 w-4" />
+                    {r.value.toLocaleString("en-US")}
+                  </span>
                 </span>
               </li>
             ))}
