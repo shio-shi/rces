@@ -15,6 +15,13 @@
       "when": 1788242642008,
       "tag": "0001_buy_item_one_copy_onsale",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788444469048,
+      "tag": "0002_add_item_value",
+      "breakpoints": true
     }
   ]
 }
