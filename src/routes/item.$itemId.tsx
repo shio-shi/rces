@@ -203,7 +203,7 @@ function ItemPage() {
               )}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <div className="rb-card p-3">
                 <div className="text-xs uppercase text-muted-foreground">Copies sold</div>
                 <div className="font-bold">{num(item.copies_sold)}</div>
@@ -213,6 +213,13 @@ function ItemPage() {
                 <div className="flex items-center gap-1 font-bold">
                   <RawbuxIcon />
                   {num(item.rap)}
+                </div>
+              </div>
+              <div className="rb-card p-3">
+                <div className="text-xs uppercase text-muted-foreground">Value</div>
+                <div className="flex items-center gap-1 font-bold">
+                  <RawbuxIcon />
+                  {num(item.value)}
                 </div>
               </div>
               <div className="rb-card p-3">
