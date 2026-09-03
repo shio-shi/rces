@@ -85,9 +85,15 @@ function LeaderboardPage() {
                 <span className="text-xs text-muted-foreground">
                   {r.items} item{r.items === 1 ? "" : "s"}
                 </span>
-                <span className="ml-auto inline-flex items-center gap-1 font-bold">
-                  <RawbuxIcon className="h-4 w-4" />
-                  {r.rap.toLocaleString("en-US")}
+                <span className="ml-auto inline-flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1 font-bold" title="Total RAP">
+                    <RawbuxIcon className="h-4 w-4" />
+                    {r.rap.toLocaleString("en-US")}
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-bold text-muted-foreground" title="Total value">
+                    <RawbuxIcon className="h-4 w-4" />
+                    {r.value.toLocaleString("en-US")}
+                  </span>
                 </span>
               </li>
             ))}
