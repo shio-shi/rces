@@ -158,10 +158,37 @@ function NewTradePage() {
           toggle={toggle(request, setRequest)}
         />
       </div>
-      <div className="rb-card mt-4 flex items-center justify-between p-4">
-        <p className="text-sm text-muted-foreground">
-          Offering {offer.length} item(s) for {request.length} item(s).
-        </p>
+      <div className="rb-card mt-4 flex flex-wrap items-center justify-between gap-3 p-4">
+        <div className="text-sm text-muted-foreground">
+          <p>
+            Offering {offer.length} item(s) for {request.length} item(s).
+          </p>
+          {(() => {
+            const sel = (ids: string[], hs: Holding[]) =>
+              hs.filter((h) => ids.includes(h.id)).map((h) => h.item);
+            const sum = (items: Item[], k: "rap" | "value") =>
+              items.reduce((s, i) => s + (i[k] ?? 0), 0);
+            const give = sel(offer, data.mine);
+            const get = sel(request, data.theirs);
+            const fmt = (n: number) =>
+              `${n >= 0 ? "+" : "−"}${Math.abs(n).toLocaleString("en-US")}`;
+            const rapDiff = sum(get, "rap") - sum(give, "rap");
+            const valDiff = sum(get, "value") - sum(give, "value");
+            const cls = (n: number) => (n >= 0 ? "text-buy" : "text-destructive");
+            return (
+              <p className="mt-1 text-xs font-semibold">
+                You give: {sum(give, "rap").toLocaleString("en-US")} RAP ·{" "}
+                {sum(give, "value").toLocaleString("en-US")} Value
+                <span className="mx-2 text-border">|</span>
+                You receive: {sum(get, "rap").toLocaleString("en-US")} RAP ·{" "}
+                {sum(get, "value").toLocaleString("en-US")} Value
+                <span className="mx-2 text-border">|</span>
+                Net: <span className={cls(rapDiff)}>{fmt(rapDiff)} RAP</span> ·{" "}
+                <span className={cls(valDiff)}>{fmt(valDiff)} Value</span>
+              </p>
+            );
+          })()}
+        </div>
         <button
           onClick={send}
           disabled={sending || offer.length === 0 || request.length === 0}

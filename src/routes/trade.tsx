@@ -34,6 +34,33 @@ type TradeRow = {
   created_at: string;
 };
 
+function SideTotals({ items }: { items: Item[] }) {
+  const rap = items.reduce((s, i) => s + (i.rap ?? 0), 0);
+  const value = items.reduce((s, i) => s + (i.value ?? 0), 0);
+  return (
+    <p className="mt-1 text-xs font-semibold text-muted-foreground">
+      RAP: {rap.toLocaleString("en-US")} · Value: {value.toLocaleString("en-US")}
+    </p>
+  );
+}
+
+function NetLine({ give, receive }: { give: Item[]; receive: Item[] }) {
+  const rapDiff =
+    receive.reduce((s, i) => s + (i.rap ?? 0), 0) - give.reduce((s, i) => s + (i.rap ?? 0), 0);
+  const valueDiff =
+    receive.reduce((s, i) => s + (i.value ?? 0), 0) -
+    give.reduce((s, i) => s + (i.value ?? 0), 0);
+  const fmt = (n: number) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toLocaleString("en-US")}`;
+  const cls = (n: number) => (n >= 0 ? "text-buy" : "text-destructive");
+  return (
+    <p className="mt-2 border-t border-border pt-2 text-xs font-bold">
+      You {rapDiff >= 0 && valueDiff >= 0 ? "earn" : rapDiff <= 0 && valueDiff <= 0 ? "lose" : "net"}
+      : <span className={cls(rapDiff)}>{fmt(rapDiff)} RAP</span> ·{" "}
+      <span className={cls(valueDiff)}>{fmt(valueDiff)} Value</span>
+    </p>
+  );
+}
+
 function ItemStrip({ items }: { items: Item[] }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -190,14 +217,17 @@ function TradePage() {
                         You give
                       </p>
                       <ItemStrip items={yourItems} />
+                      <SideTotals items={yourItems} />
                     </div>
                     <div>
                       <p className="mb-1 text-xs font-bold uppercase text-muted-foreground">
                         You receive
                       </p>
                       <ItemStrip items={theirItems} />
+                      <SideTotals items={theirItems} />
                     </div>
                   </div>
+                  <NetLine give={yourItems} receive={theirItems} />
                 </div>
               );
             })}

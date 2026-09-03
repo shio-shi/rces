@@ -14,6 +14,7 @@ import {
   adminLogin,
   adminLogout,
   adminSetItemRap,
+  adminSetItemValue,
   adminSetPromocodeActive,
   adminStatus,
   adminUnbanUser,
@@ -73,6 +74,7 @@ type AdminItem = {
   price: number;
   copies_sold: number;
   rap: number;
+  value: number;
 };
 
 function AdminPage() {
@@ -103,6 +105,7 @@ function AdminPage() {
   const [timerM, setTimerM] = useState("0");
   const [timerS, setTimerS] = useState("0");
   const [stock, setStock] = useState("");
+  const [itemValue, setItemValue] = useState("");
 
   const [search, setSearch] = useState("");
   const [user, setUser] = useState<FoundUser | null>(null);
@@ -185,6 +188,7 @@ function AdminPage() {
           timerMinutes: cls === "normal" ? null : Number(timerM) || 0,
           timerSeconds: cls === "normal" ? null : Number(timerS) || 0,
           stock: cls !== "normal" && stock.trim() !== "" ? Number(stock) || 0 : null,
+          value: itemValue.trim() !== "" ? Number(itemValue) || 0 : null,
         },
       });
       toast.success("Item published.");
@@ -300,6 +304,13 @@ function AdminPage() {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="Price"
+            inputMode="numeric"
+            className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+          />
+          <input
+            value={itemValue}
+            onChange={(e) => setItemValue(e.target.value)}
+            placeholder="Value (blank = same as price)"
             inputMode="numeric"
             className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
           />
@@ -546,15 +557,23 @@ function AdminPage() {
 
 function ValueEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void | Promise<void> }) {
   const setRap = useServerFn(adminSetItemRap);
-  const [value, setValue] = useState(String(item.rap ?? 0));
+  const setValue = useServerFn(adminSetItemValue);
+  const [rap, setRapValue] = useState(String(item.rap ?? 0));
+  const [value, setValueState] = useState(String(item.value ?? 0));
   const [busy, setBusy] = useState(false);
 
   return (
-    <div className="ml-auto flex items-center gap-2">
+    <div className="ml-auto flex flex-wrap items-center gap-2">
+      <label className="text-xs font-semibold text-muted-foreground">RAP</label>
+      <input
+        value={rap}
+        onChange={(e) => setRapValue(e.target.value)}
+        className="h-7 w-24 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
+      />
       <label className="text-xs font-semibold text-muted-foreground">Value</label>
       <input
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => setValueState(e.target.value)}
         className="h-7 w-24 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
       />
       <button
@@ -562,11 +581,12 @@ function ValueEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void |
         onClick={async () => {
           setBusy(true);
           try {
-            await setRap({ data: { itemId: item.id, rap: Number(value) || 0 } });
-            toast.success("Value updated");
+            await setRap({ data: { itemId: item.id, rap: Number(rap) || 0 } });
+            await setValue({ data: { itemId: item.id, value: Number(value) || 0 } });
+            toast.success("RAP and value updated");
             await onSaved();
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed to update value");
+            toast.error(e instanceof Error ? e.message : "Failed to update item");
           } finally {
             setBusy(false);
           }

@@ -31,6 +31,7 @@ export type Item = {
   stock: number | null;
   copies_sold: number;
   rap: number;
+  value: number;
   created_at: string;
 };
 

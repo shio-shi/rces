@@ -37,6 +37,7 @@ export const publishItem = createServerFn({ method: "POST" })
       timerMinutes?: number | null;
       timerSeconds?: number | null;
       stock?: number | null;
+      value?: number | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -64,6 +65,10 @@ export const publishItem = createServerFn({ method: "POST" })
           ? null
           : Math.max(0, Math.round(data.stock)),
       rap: Math.max(0, Math.round(data.price)),
+      value: Math.max(
+        0,
+        Math.round(data.value === null || data.value === undefined ? data.price : data.value),
+      ),
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -194,7 +199,7 @@ export const adminListItems = createServerFn({ method: "GET" }).handler(async ()
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("items")
-    .select("id, name, kind, class, price, copies_sold, rap")
+    .select("id, name, kind, class, price, copies_sold, rap, value")
     .order("created_at", { ascending: false })
     .limit(200);
   return data ?? [];
@@ -209,6 +214,20 @@ export const adminSetItemRap = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("items")
       .update({ rap: Math.max(0, Math.round(data.rap)) })
+      .eq("id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminSetItemValue = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string; value: number }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("items")
+      .update({ value: Math.max(0, Math.round(data.value)) })
       .eq("id", data.itemId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
