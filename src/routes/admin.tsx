@@ -445,6 +445,17 @@ function AdminPage() {
               >
                 Give Rawbux
               </button>
+              <button
+                onClick={async () => {
+                  if (!window.confirm(`Reset ${user.username}'s Rawbux to 0?`)) return;
+                  await resetRawbux({ data: { userId: user.id } });
+                  toast.success("Rawbux reset to 0.");
+                  await doFind();
+                }}
+                className="rounded-md bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground hover:opacity-90"
+              >
+                Reset Rawbux
+              </button>
             </div>
           </div>
         )}
