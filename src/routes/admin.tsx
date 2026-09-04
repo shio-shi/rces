@@ -9,6 +9,7 @@ import {
   adminDeleteItem,
   adminFindUser,
   adminGrantRawbux,
+  adminResetRawbux,
   adminListItems,
   adminListPromocodes,
   adminLogin,
@@ -86,6 +87,7 @@ function AdminPage() {
   const ban = useServerFn(adminBanUser);
   const unban = useServerFn(adminUnbanUser);
   const grant = useServerFn(adminGrantRawbux);
+  const resetRawbux = useServerFn(adminResetRawbux);
   const listCodes = useServerFn(adminListPromocodes);
   const createCode = useServerFn(adminCreatePromocode);
   const setCodeActive = useServerFn(adminSetPromocodeActive);
@@ -444,6 +446,17 @@ function AdminPage() {
                 className="rounded-md bg-buy px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
               >
                 Give Rawbux
+              </button>
+              <button
+                onClick={async () => {
+                  if (!window.confirm(`Reset ${user.username}'s Rawbux to 0?`)) return;
+                  await resetRawbux({ data: { userId: user.id } });
+                  toast.success("Rawbux reset to 0.");
+                  await doFind();
+                }}
+                className="rounded-md bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground hover:opacity-90"
+              >
+                Reset Rawbux
               </button>
             </div>
           </div>
