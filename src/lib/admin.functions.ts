@@ -140,6 +140,20 @@ export const adminGrantRawbux = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const adminResetRawbux = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ rawbux: 0 })
+      .eq("id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const adminListPromocodes = createServerFn({ method: "GET" }).handler(async () => {
   const { requireAdmin } = await import("./admin.server");
   await requireAdmin();
