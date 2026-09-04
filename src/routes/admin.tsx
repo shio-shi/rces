@@ -9,6 +9,7 @@ import {
   adminDeleteItem,
   adminFindUser,
   adminGrantRawbux,
+  adminResetRawbux,
   adminListItems,
   adminListPromocodes,
   adminLogin,
@@ -86,6 +87,7 @@ function AdminPage() {
   const ban = useServerFn(adminBanUser);
   const unban = useServerFn(adminUnbanUser);
   const grant = useServerFn(adminGrantRawbux);
+  const resetRawbux = useServerFn(adminResetRawbux);
   const listCodes = useServerFn(adminListPromocodes);
   const createCode = useServerFn(adminCreatePromocode);
   const setCodeActive = useServerFn(adminSetPromocodeActive);
