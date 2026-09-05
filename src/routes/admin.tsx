@@ -229,11 +229,45 @@ function AdminPage() {
     }
   }
 
+  async function reloadInventory(userId: string) {
+    setInventory((await getInventory({ data: { userId } })) as unknown as InventoryRow[]);
+  }
+
   async function doFind() {
     try {
       const u = (await findUser({ data: { username: search } })) as FoundUser | null;
       setUser(u);
-      if (!u) toast.error("User not found.");
+      setInventory([]);
+      if (!u) {
+        toast.error("User not found.");
+        return;
+      }
+      await reloadInventory(u.id);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function doGiveItem() {
+    if (!user || !giveItemId) return;
+    try {
+      await giveItem({ data: { userId: user.id, itemId: giveItemId } });
+      toast.success("Item given.");
+      await reloadInventory(user.id);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function doRemoveItem(row: InventoryRow) {
+    if (!user) return;
+    const label = row.items?.name ?? "this item";
+    if (!window.confirm(`Remove ${label}${row.serial !== null ? ` #${row.serial}` : ""} from ${user.username}?`))
+      return;
+    try {
+      await removeUserItem({ data: { userItemId: row.id } });
+      toast.success("Item removed.");
+      await reloadInventory(user.id);
     } catch (e) {
       toast.error((e as Error).message);
     }
