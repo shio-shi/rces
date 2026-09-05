@@ -8,7 +8,10 @@ import {
   adminCreatePromocode,
   adminDeleteItem,
   adminFindUser,
+  adminGetInventory,
+  adminGiveItem,
   adminGrantRawbux,
+  adminRemoveUserItem,
   adminResetRawbux,
   adminListItems,
   adminListPromocodes,
@@ -78,6 +81,13 @@ type AdminItem = {
   value: number;
 };
 
+type InventoryRow = {
+  id: string;
+  serial: number | null;
+  sale_price: number | null;
+  items: { id: string; name: string; kind: string; class: string } | null;
+};
+
 function AdminPage() {
   const status = useServerFn(adminStatus);
   const login = useServerFn(adminLogin);
@@ -93,6 +103,9 @@ function AdminPage() {
   const setCodeActive = useServerFn(adminSetPromocodeActive);
   const listItems = useServerFn(adminListItems);
   const deleteItem = useServerFn(adminDeleteItem);
+  const getInventory = useServerFn(adminGetInventory);
+  const giveItem = useServerFn(adminGiveItem);
+  const removeUserItem = useServerFn(adminRemoveUserItem);
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pw, setPw] = useState("");
@@ -114,6 +127,8 @@ function AdminPage() {
   const [reason, setReason] = useState("");
   const [duration, setDuration] = useState("1d");
   const [amount, setAmount] = useState("100");
+  const [inventory, setInventory] = useState<InventoryRow[]>([]);
+  const [giveItemId, setGiveItemId] = useState("");
 
   const [code, setCode] = useState("");
   const [codeRawbux, setCodeRawbux] = useState("100");
@@ -214,11 +229,45 @@ function AdminPage() {
     }
   }
 
+  async function reloadInventory(userId: string) {
+    setInventory((await getInventory({ data: { userId } })) as unknown as InventoryRow[]);
+  }
+
   async function doFind() {
     try {
       const u = (await findUser({ data: { username: search } })) as FoundUser | null;
       setUser(u);
-      if (!u) toast.error("User not found.");
+      setInventory([]);
+      if (!u) {
+        toast.error("User not found.");
+        return;
+      }
+      await reloadInventory(u.id);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function doGiveItem() {
+    if (!user || !giveItemId) return;
+    try {
+      await giveItem({ data: { userId: user.id, itemId: giveItemId } });
+      toast.success("Item given.");
+      await reloadInventory(user.id);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function doRemoveItem(row: InventoryRow) {
+    if (!user) return;
+    const label = row.items?.name ?? "this item";
+    if (!window.confirm(`Remove ${label}${row.serial !== null ? ` #${row.serial}` : ""} from ${user.username}?`))
+      return;
+    try {
+      await removeUserItem({ data: { userItemId: row.id } });
+      toast.success("Item removed.");
+      await reloadInventory(user.id);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -458,6 +507,63 @@ function AdminPage() {
               >
                 Reset Rawbux
               </button>
+            </div>
+
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">
+                Inventory ({inventory.length})
+              </p>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <select
+                  value={giveItemId}
+                  onChange={(e) => setGiveItemId(e.target.value)}
+                  className="h-9 max-w-64 rounded-md border border-input bg-card px-3 text-sm"
+                >
+                  <option value="">Pick an item to give...</option>
+                  {itemOptions.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={doGiveItem}
+                  disabled={!giveItemId}
+                  className="rounded-md bg-buy px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  Give item
+                </button>
+              </div>
+              {inventory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">This player owns no items.</p>
+              ) : (
+                <div className="space-y-1">
+                  {inventory.map((row) => (
+                    <div
+                      key={row.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-1.5 text-sm"
+                    >
+                      <span className="truncate">
+                        {row.items?.name ?? "Unknown item"}
+                        {row.serial !== null && (
+                          <span className="ml-1 text-xs text-muted-foreground">#{row.serial}</span>
+                        )}
+                        {row.sale_price !== null && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            (on sale for {row.sale_price.toLocaleString("en-US")})
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        onClick={() => doRemoveItem(row)}
+                        className="shrink-0 rounded-md border border-border px-2 py-1 text-xs font-bold text-destructive hover:bg-surface"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
