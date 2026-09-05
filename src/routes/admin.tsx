@@ -8,7 +8,10 @@ import {
   adminCreatePromocode,
   adminDeleteItem,
   adminFindUser,
+  adminGetInventory,
+  adminGiveItem,
   adminGrantRawbux,
+  adminRemoveUserItem,
   adminResetRawbux,
   adminListItems,
   adminListPromocodes,
@@ -76,6 +79,13 @@ type AdminItem = {
   copies_sold: number;
   rap: number;
   value: number;
+};
+
+type InventoryRow = {
+  id: string;
+  serial: number | null;
+  sale_price: number | null;
+  items: { id: string; name: string; kind: string; class: string } | null;
 };
 
 function AdminPage() {
