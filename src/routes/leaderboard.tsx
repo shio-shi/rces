@@ -11,12 +11,12 @@ export const Route = createFileRoute("/leaderboard")({
       { title: "Leaderboard — Rawrion Economy Simulator" },
       {
         name: "description",
-        content: "See which players hold the most valuable inventories, ranked by total RAP.",
+        content: "See which players hold the most valuable inventories, ranked by total value.",
       },
       { property: "og:title", content: "Leaderboard — Rawrion Economy Simulator" },
       {
         property: "og:description",
-        content: "See which players hold the most valuable inventories, ranked by total RAP.",
+        content: "See which players hold the most valuable inventories, ranked by total value.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
