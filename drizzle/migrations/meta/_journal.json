@@ -29,6 +29,13 @@
       "when": 1788512124808,
       "tag": "0003_prevent_duplicate_copies_via_trade",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788603589092,
+      "tag": "0004_fix_respond_trade_cast",
+      "breakpoints": true
     }
   ]
 }
