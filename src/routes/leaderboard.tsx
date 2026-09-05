@@ -11,12 +11,12 @@ export const Route = createFileRoute("/leaderboard")({
       { title: "Leaderboard — Rawrion Economy Simulator" },
       {
         name: "description",
-        content: "See which players hold the most valuable inventories, ranked by total RAP.",
+        content: "See which players hold the most valuable inventories, ranked by total value.",
       },
       { property: "og:title", content: "Leaderboard — Rawrion Economy Simulator" },
       {
         property: "og:description",
-        content: "See which players hold the most valuable inventories, ranked by total RAP.",
+        content: "See which players hold the most valuable inventories, ranked by total value.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -51,7 +51,7 @@ function LeaderboardPage() {
         value: totals.get(p.id)?.value ?? 0,
         items: totals.get(p.id)?.items ?? 0,
       }));
-      list.sort((a, b) => b.rap - a.rap || a.username.localeCompare(b.username));
+      list.sort((a, b) => b.value - a.value || b.rap - a.rap || a.username.localeCompare(b.username));
       setRows(list);
     })();
   }, []);
@@ -61,7 +61,7 @@ function LeaderboardPage() {
       <div className="rb-card p-5">
         <h1 className="rb-heading">Leaderboard</h1>
         <p className="mb-4 text-sm text-muted-foreground">
-          Players ranked by the total RAP and value of every item they own.
+          Players ranked by the total value of every item they own.
         </p>
 
         {rows === null ? (
@@ -86,13 +86,13 @@ function LeaderboardPage() {
                   {r.items} item{r.items === 1 ? "" : "s"}
                 </span>
                 <span className="ml-auto inline-flex items-center gap-3">
-                  <span className="inline-flex items-center gap-1 font-bold" title="Total RAP">
-                    <RawbuxIcon className="h-4 w-4" />
-                    {r.rap.toLocaleString("en-US")}
-                  </span>
-                  <span className="inline-flex items-center gap-1 font-bold text-muted-foreground" title="Total value">
+                  <span className="inline-flex items-center gap-1 font-bold" title="Total value">
                     <RawbuxIcon className="h-4 w-4" />
                     {r.value.toLocaleString("en-US")}
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-bold text-muted-foreground" title="Total RAP">
+                    <RawbuxIcon className="h-4 w-4" />
+                    {r.rap.toLocaleString("en-US")}
                   </span>
                 </span>
               </li>
