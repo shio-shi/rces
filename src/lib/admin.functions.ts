@@ -247,6 +247,71 @@ export const adminSetItemValue = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const adminGetInventory = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("user_items")
+      .select("id, serial, sale_price, items(id, name, kind, class)")
+      .eq("user_id", data.userId)
+      .order("acquired_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const adminRemoveUserItem = createServerFn({ method: "POST" })
+  .inputValidator((data: { userItemId: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: e1 } = await supabaseAdmin
+      .from("trade_items")
+      .delete()
+      .eq("user_item_id", data.userItemId);
+    if (e1) throw new Error(e1.message);
+    const { error } = await supabaseAdmin
+      .from("user_items")
+      .delete()
+      .eq("id", data.userItemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminGiveItem = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string; itemId: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: item } = await supabaseAdmin
+      .from("items")
+      .select("id, class")
+      .eq("id", data.itemId)
+      .maybeSingle();
+    if (!item) throw new Error("Item not found");
+    let serial: number | null = null;
+    if (item.class !== "normal") {
+      const { data: rows } = await supabaseAdmin
+        .from("user_items")
+        .select("serial")
+        .eq("item_id", data.itemId)
+        .order("serial", { ascending: false })
+        .limit(1);
+      serial = ((rows?.[0]?.serial as number | null) ?? 0) + 1;
+    }
+    const { error } = await supabaseAdmin.from("user_items").insert({
+      item_id: data.itemId,
+      user_id: data.userId,
+      serial,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const adminDeleteItem = createServerFn({ method: "POST" })
   .inputValidator((data: { itemId: string }) => data)
   .handler(async ({ data }) => {
