@@ -51,7 +51,7 @@ function LeaderboardPage() {
         value: totals.get(p.id)?.value ?? 0,
         items: totals.get(p.id)?.items ?? 0,
       }));
-      list.sort((a, b) => b.rap - a.rap || a.username.localeCompare(b.username));
+      list.sort((a, b) => b.value - a.value || b.rap - a.rap || a.username.localeCompare(b.username));
       setRows(list);
     })();
   }, []);
@@ -61,7 +61,7 @@ function LeaderboardPage() {
       <div className="rb-card p-5">
         <h1 className="rb-heading">Leaderboard</h1>
         <p className="mb-4 text-sm text-muted-foreground">
-          Players ranked by the total RAP and value of every item they own.
+          Players ranked by the total value of every item they own.
         </p>
 
         {rows === null ? (
