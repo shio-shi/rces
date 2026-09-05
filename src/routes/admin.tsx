@@ -103,6 +103,9 @@ function AdminPage() {
   const setCodeActive = useServerFn(adminSetPromocodeActive);
   const listItems = useServerFn(adminListItems);
   const deleteItem = useServerFn(adminDeleteItem);
+  const getInventory = useServerFn(adminGetInventory);
+  const giveItem = useServerFn(adminGiveItem);
+  const removeUserItem = useServerFn(adminRemoveUserItem);
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pw, setPw] = useState("");
@@ -124,6 +127,8 @@ function AdminPage() {
   const [reason, setReason] = useState("");
   const [duration, setDuration] = useState("1d");
   const [amount, setAmount] = useState("100");
+  const [inventory, setInventory] = useState<InventoryRow[]>([]);
+  const [giveItemId, setGiveItemId] = useState("");
 
   const [code, setCode] = useState("");
   const [codeRawbux, setCodeRawbux] = useState("100");
