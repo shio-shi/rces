@@ -138,6 +138,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          inventory_private: boolean
           is_banned: boolean
           last_daily_at: string
           rawbux: number
@@ -149,6 +150,7 @@ export type Database = {
           created_at?: string
           description?: string
           id: string
+          inventory_private?: boolean
           is_banned?: boolean
           last_daily_at?: string
           rawbux?: number
@@ -160,6 +162,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          inventory_private?: boolean
           is_banned?: boolean
           last_daily_at?: string
           rawbux?: number
@@ -393,6 +396,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      inventory_is_private: { Args: { _user_id: string }; Returns: boolean }
       item_is_limited: {
         Args: { _item: Database["public"]["Tables"]["items"]["Row"] }
         Returns: boolean
@@ -412,6 +416,7 @@ export type Database = {
         Args: { _follow: boolean; _target: string }
         Returns: string
       }
+      set_inventory_private: { Args: { _private: boolean }; Returns: string }
       set_resale: {
         Args: { _price: number; _user_item_id: string }
         Returns: string

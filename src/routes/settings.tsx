@@ -162,6 +162,37 @@ function SettingsPage() {
           </div>
         </section>
 
+        <section className="mb-6">
+          <h2 className="font-semibold">Inventory privacy</h2>
+          <p className="mb-2 text-sm text-muted-foreground">
+            With a private inventory nobody can see the items you own, and you are hidden from the
+            leaderboard.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPrivate(false)}
+              className={`rounded-md border px-4 py-2 text-sm font-bold ${
+                !profile?.inventory_private
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-card hover:bg-accent"
+              }`}
+            >
+              Public
+            </button>
+            <button
+              onClick={() => setPrivate(true)}
+              className={`rounded-md border px-4 py-2 text-sm font-bold ${
+                profile?.inventory_private
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-card hover:bg-accent"
+              }`}
+            >
+              Private
+            </button>
+          </div>
+        </section>
+
+
         <section>
           <button
             onClick={logout}
