@@ -11,10 +11,18 @@ import {
   Settings,
   Search,
   Loader2,
+  Menu,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { RawbuxIcon } from "@/components/RawbuxIcon";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
@@ -123,6 +131,52 @@ function SearchBar() {
   );
 }
 
+function MobileNav({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-nav-foreground hover:bg-accent md:hidden"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[260px] p-0">
+        <SheetTitle className="sr-only">Navigation</SheetTitle>
+        <SheetDescription className="sr-only">
+          Main navigation links
+        </SheetDescription>
+        <nav className="flex h-full flex-col border-r border-border bg-card py-4">
+          <div className="flex items-center justify-between px-4 pb-3">
+            <span className="text-lg font-extrabold tracking-tight">Menu</span>
+          </div>
+          {NAV.map(({ to, label, icon: Icon }) => {
+            const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 border-l-4 px-4 py-3 text-sm font-semibold transition-colors ${
+                  active
+                    ? "border-primary bg-sidebar-accent text-foreground"
+                    : "border-transparent text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export function AppLayout({ children }: { children: ReactNode }) {
   const { session, profile, loading } = useAuth();
   const navigate = useNavigate();
@@ -147,13 +201,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-border bg-nav text-nav-foreground">
-        <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-6 px-4">
+        <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-3 px-4 md:gap-6">
+          <MobileNav pathname={pathname} />
           <Link to="/" className="text-xl font-extrabold tracking-tight">
             Rawrion Economy Simulator
           </Link>
           <Link
             to="/catalog"
-            className="text-sm font-semibold text-muted-foreground hover:text-foreground"
+            className="hidden text-sm font-semibold text-muted-foreground hover:text-foreground md:block"
           >
             Catalog
           </Link>
