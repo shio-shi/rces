@@ -12,17 +12,11 @@ import {
   Search,
   Loader2,
   Menu,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { RawbuxIcon } from "@/components/RawbuxIcon";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
