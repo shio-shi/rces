@@ -179,7 +179,9 @@ function UserPage() {
 
       <div className="rb-card mt-4 p-4">
         <h2 className="rb-heading">Inventory</h2>
-        {data.items.length > 0 ? (
+        {!isMe && (data.profile as { inventory_private?: boolean }).inventory_private ? (
+          <p className="text-sm text-muted-foreground">This user's inventory is private.</p>
+        ) : data.items.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {data.items.map((i) => (
               <ItemCard key={i.id} item={i} />
@@ -188,6 +190,7 @@ function UserPage() {
         ) : (
           <p className="text-sm text-muted-foreground">This user doesn't own any items.</p>
         )}
+
       </div>
     </AppLayout>
   );

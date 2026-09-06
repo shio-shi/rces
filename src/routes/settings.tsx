@@ -57,6 +57,16 @@ function SettingsPage() {
     }
   }
 
+  async function setPrivate(v: boolean) {
+    const { data, error } = await supabase.rpc("set_inventory_private", { _private: v });
+    if (error) { toast.error(error.message); return; }
+    if (data === "ok") {
+      toast.success(v ? "Your inventory is now private." : "Your inventory is now public.");
+      await refresh();
+    } else toast.error(String(data));
+  }
+
+
   async function changePassword() {
     if (pw.length < 6) { toast.error("Password must be at least 6 characters."); return; }
     const { error } = await supabase.auth.updateUser({ password: pw });

@@ -12,6 +12,8 @@ export type Profile = {
   ban_reason: string | null;
   ban_until: string | null;
   created_at: string;
+  inventory_private?: boolean;
+
 };
 
 type AuthValue = {

@@ -33,7 +33,13 @@ function LeaderboardPage() {
   useEffect(() => {
     void (async () => {
       const [{ data: profiles }, { data: owned }] = await Promise.all([
-        supabase.from("profiles").select("id, username").eq("is_banned", false).limit(1000),
+        supabase
+          .from("profiles")
+          .select("id, username")
+          .eq("is_banned", false)
+          .eq("inventory_private", false)
+          .limit(1000),
+
         supabase.from("user_items").select("user_id, items(rap, value)").limit(20000),
       ]);
       const totals = new Map<string, { rap: number; value: number; items: number }>();
