@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { rpcMessage } from "@/lib/social";
 import { ItemThumb } from "@/components/ItemCard";
-import type { Item } from "@/lib/format";
+import { isLimitedNow, type Item } from "@/lib/format";
 
 export const Route = createFileRoute("/trade_/new/$username")({
   head: () => ({
@@ -28,9 +28,9 @@ async function loadHoldings(userId: string): Promise<Holding[]> {
     .from("user_items")
     .select("id, serial, items(*)")
     .eq("user_id", userId);
-  return ((data ?? []) as unknown as { id: string; serial: number | null; items: Item }[]).map(
-    (r) => ({ id: r.id, serial: r.serial, item: r.items }),
-  );
+  return ((data ?? []) as unknown as { id: string; serial: number | null; items: Item }[])
+    .map((r) => ({ id: r.id, serial: r.serial, item: r.items }))
+    .filter((r) => isLimitedNow(r.item));
 }
 
 function Picker({
@@ -48,7 +48,9 @@ function Picker({
     <div className="rb-card p-4">
       <h2 className="rb-heading">{title}</h2>
       {holdings.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No items available.</p>
+        <p className="text-sm text-muted-foreground">
+          No limited items available. Only limited items can be traded.
+        </p>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {holdings.map((h) => {

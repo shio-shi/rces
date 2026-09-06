@@ -43,6 +43,13 @@
       "when": 1788604299352,
       "tag": "0005_add_inventory_private",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788697119140,
+      "tag": "0006_create_trade_only_limited_items",
+      "breakpoints": true
     }
   ]
 }
