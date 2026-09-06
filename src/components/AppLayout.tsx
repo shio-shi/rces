@@ -128,46 +128,66 @@ function SearchBar() {
 function MobileNav({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <button
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-nav-foreground hover:bg-accent md:hidden"
-          aria-label="Open menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-[260px] p-0">
-        <SheetTitle className="sr-only">Navigation</SheetTitle>
-        <SheetDescription className="sr-only">
-          Main navigation links
-        </SheetDescription>
-        <nav className="flex h-full flex-col border-r border-border bg-card py-4">
-          <div className="flex items-center justify-between px-4 pb-3">
-            <span className="text-lg font-extrabold tracking-tight">Menu</span>
-          </div>
-          {NAV.map(({ to, label, icon: Icon }) => {
-            const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-            return (
-              <Link
-                key={to}
-                to={to}
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-nav-foreground hover:bg-accent md:hidden"
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 animate-in fade-in"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-y-0 left-0 z-50 w-[260px] animate-in slide-in-from-left border-r border-border bg-card shadow-lg">
+            <div className="flex h-14 items-center justify-between border-b border-border px-4">
+              <span className="text-lg font-extrabold tracking-tight">Menu</span>
+              <button
                 onClick={() => setOpen(false)}
-                className={`flex items-center gap-3 border-l-4 px-4 py-3 text-sm font-semibold transition-colors ${
-                  active
-                    ? "border-primary bg-sidebar-accent text-foreground"
-                    : "border-transparent text-sidebar-foreground hover:bg-sidebar-accent"
-                }`}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+                aria-label="Close menu"
               >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-      </SheetContent>
-    </Sheet>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <nav className="flex flex-col py-2">
+              {NAV.map(({ to, label, icon: Icon }) => {
+                const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center gap-3 border-l-4 px-4 py-3 text-sm font-semibold transition-colors ${
+                      active
+                        ? "border-primary bg-sidebar-accent text-foreground"
+                        : "border-transparent text-sidebar-foreground hover:bg-sidebar-accent"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
