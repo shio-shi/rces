@@ -213,7 +213,7 @@ export const adminListItems = createServerFn({ method: "GET" }).handler(async ()
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("items")
-    .select("id, name, kind, class, price, copies_sold, rap, value")
+    .select("id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at")
     .order("created_at", { ascending: false })
     .limit(200);
   return data ?? [];
@@ -242,6 +242,36 @@ export const adminSetItemValue = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("items")
       .update({ value: Math.max(0, Math.round(data.value)) })
+      .eq("id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminRestockItem = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { itemId: string; stock: number | null; hours: number; minutes: number; seconds: number }) =>
+      data,
+  )
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const totalSeconds =
+      Math.max(0, Math.floor(data.hours)) * 3600 +
+      Math.max(0, Math.floor(data.minutes)) * 60 +
+      Math.max(0, Math.floor(data.seconds));
+    const stock =
+      data.stock === null || Number.isNaN(data.stock) ? null : Math.max(0, Math.round(data.stock));
+    if (totalSeconds <= 0 && (stock === null || stock <= 0)) {
+      throw new Error("Set a stock amount above 0 or a timer above 0.");
+    }
+    const { error } = await supabaseAdmin
+      .from("items")
+      .update({
+        stock,
+        sale_ends_at:
+          totalSeconds > 0 ? new Date(Date.now() + totalSeconds * 1000).toISOString() : null,
+      })
       .eq("id", data.itemId);
     if (error) throw new Error(error.message);
     return { ok: true as const };

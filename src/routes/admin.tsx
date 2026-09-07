@@ -17,6 +17,7 @@ import {
   adminListPromocodes,
   adminLogin,
   adminLogout,
+  adminRestockItem,
   adminSetItemRap,
   adminSetItemValue,
   adminSetPromocodeActive,
@@ -79,6 +80,8 @@ type AdminItem = {
   copies_sold: number;
   rap: number;
   value: number;
+  stock: number | null;
+  sale_ends_at: string | null;
 };
 
 type InventoryRow = {
@@ -659,6 +662,7 @@ function AdminPage() {
                   {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
                 </span>
                 <ValueEditor item={i} onSaved={reloadItems} />
+                {i.class !== "normal" && <RestockEditor item={i} onSaved={reloadItems} />}
                 <button
                   onClick={() => doDeleteItem(i)}
                   className="rounded-md bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground hover:opacity-90"
@@ -671,6 +675,91 @@ function AdminPage() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function RestockEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void | Promise<void> }) {
+  const restock = useServerFn(adminRestockItem);
+  const [open, setOpen] = useState(false);
+  const [stock, setStock] = useState("");
+  const [h, setH] = useState("0");
+  const [m, setM] = useState("0");
+  const [sec, setSec] = useState("0");
+  const [busy, setBusy] = useState(false);
+
+  const isLimited =
+    (item.stock !== null && item.stock <= 0) ||
+    (!!item.sale_ends_at && new Date(item.sale_ends_at).getTime() <= Date.now());
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
+      >
+        {isLimited ? "Restock" : "Restock / retimer"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2">
+      <label className="text-xs font-semibold text-muted-foreground">Stock</label>
+      <input
+        value={stock}
+        onChange={(e) => setStock(e.target.value)}
+        placeholder="none"
+        className="h-7 w-20 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
+      />
+      <label className="text-xs font-semibold text-muted-foreground">Timer</label>
+      {[
+        [h, setH, "h"],
+        [m, setM, "m"],
+        [sec, setSec, "s"],
+      ].map(([v, set, label]) => (
+        <span key={label as string} className="flex items-center gap-1">
+          <input
+            value={v as string}
+            onChange={(e) => (set as (x: string) => void)(e.target.value)}
+            className="h-7 w-14 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
+          />
+          <span className="text-xs text-muted-foreground">{label as string}</span>
+        </span>
+      ))}
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await restock({
+              data: {
+                itemId: item.id,
+                stock: stock.trim() === "" ? null : Number(stock) || 0,
+                hours: Number(h) || 0,
+                minutes: Number(m) || 0,
+                seconds: Number(sec) || 0,
+              },
+            });
+            toast.success(`${item.name} is on sale again.`);
+            setOpen(false);
+            await onSaved();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to restock item");
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="rounded-md bg-buy px-3 py-1 text-xs font-bold text-buy-foreground disabled:opacity-50"
+      >
+        Save
+      </button>
+      <button
+        onClick={() => setOpen(false)}
+        className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
+      >
+        Cancel
+      </button>
+    </div>
   );
 }
 
