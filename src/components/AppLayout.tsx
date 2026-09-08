@@ -27,6 +27,7 @@ const NAV = [
   { to: "/trade", label: "Trade", icon: Repeat },
   { to: "/promocodes", label: "Promocodes", icon: Gift },
   { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { to: "/values", label: "Values", icon: Gem },
 ] as const;
 
 function BanScreen({
