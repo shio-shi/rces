@@ -20,6 +20,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PromocodesRouteImport } from './routes/promocodes'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TradeRouteImport } from './routes/trade'
+import { Route as ValuesRouteImport } from './routes/values'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
 import { Route as UsersUsernameRouteImport } from './routes/users.$username'
 import { Route as TradeNewUsernameRouteImport } from './routes/trade_.new.$username'
@@ -79,6 +80,11 @@ const TradeRoute = TradeRouteImport.update({
   path: '/trade',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ValuesRoute = ValuesRouteImport.update({
+  id: '/values',
+  path: '/values',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemItemIdRoute = ItemItemIdRouteImport.update({
   id: '/item/$itemId',
   path: '/item/$itemId',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
   '/trade': typeof TradeRoute
+  '/values': typeof ValuesRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
   '/trade/new/$username': typeof TradeNewUsernameRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
   '/trade': typeof TradeRoute
+  '/values': typeof ValuesRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
   '/trade/new/$username': typeof TradeNewUsernameRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/promocodes': typeof PromocodesRoute
   '/settings': typeof SettingsRoute
   '/trade': typeof TradeRoute
+  '/values': typeof ValuesRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/users/$username': typeof UsersUsernameRoute
   '/trade_/new/$username': typeof TradeNewUsernameRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/promocodes'
     | '/settings'
     | '/trade'
+    | '/values'
     | '/item/$itemId'
     | '/users/$username'
     | '/trade/new/$username'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/promocodes'
     | '/settings'
     | '/trade'
+    | '/values'
     | '/item/$itemId'
     | '/users/$username'
     | '/trade/new/$username'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/promocodes'
     | '/settings'
     | '/trade'
+    | '/values'
     | '/item/$itemId'
     | '/users/$username'
     | '/trade_/new/$username'
@@ -207,6 +219,7 @@ export interface RootRouteChildren {
   PromocodesRoute: typeof PromocodesRoute
   SettingsRoute: typeof SettingsRoute
   TradeRoute: typeof TradeRoute
+  ValuesRoute: typeof ValuesRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
   UsersUsernameRoute: typeof UsersUsernameRoute
   TradeNewUsernameRoute: typeof TradeNewUsernameRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/values': {
+      id: '/values'
+      path: '/values'
+      fullPath: '/values'
+      preLoaderRoute: typeof ValuesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/item/$itemId': {
       id: '/item/$itemId'
       path: '/item/$itemId'
@@ -327,6 +347,7 @@ const rootRouteChildren: RootRouteChildren = {
   PromocodesRoute: PromocodesRoute,
   SettingsRoute: SettingsRoute,
   TradeRoute: TradeRoute,
+  ValuesRoute: ValuesRoute,
   ItemItemIdRoute: ItemItemIdRoute,
   UsersUsernameRoute: UsersUsernameRoute,
   TradeNewUsernameRoute: TradeNewUsernameRoute,
