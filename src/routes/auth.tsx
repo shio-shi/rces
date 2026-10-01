@@ -1,3 +1,4 @@
+import { resolveLoginEmail } from "@/lib/login.functions";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -66,10 +67,21 @@ function AuthPage() {
         }
         toast.success("Welcome to Rawblox! You got 100 starter Rawbux.");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        let { error } = await supabase.auth.signInWithPassword({
           email: usernameToEmail(name),
           password,
         });
+        if (error) {
+          // Account may have been renamed — look up its real sign-in address.
+          try {
+            const { email } = await resolveLoginEmail({ data: { username: name } });
+            if (email && email !== usernameToEmail(name)) {
+              ({ error } = await supabase.auth.signInWithPassword({ email, password }));
+            }
+          } catch {
+            /* ignore */
+          }
+        }
         if (error) {
           toast.error("Incorrect username or password.");
           return;
