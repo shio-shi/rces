@@ -228,7 +228,7 @@ export const adminListItems = createServerFn({ method: "GET" }).handler(async ()
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("items")
-    .select("id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at")
+    .select("id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at, description")
     .order("created_at", { ascending: false })
     .limit(200);
   return data ?? [];
@@ -287,6 +287,22 @@ export const adminRestockItem = createServerFn({ method: "POST" })
         sale_ends_at:
           totalSeconds > 0 ? new Date(Date.now() + totalSeconds * 1000).toISOString() : null,
       })
+      .eq("id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminEditItem = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string; name: string; description: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const name = data.name.trim();
+    if (!name) throw new Error("Name cannot be empty.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("items")
+      .update({ name, description: data.description })
       .eq("id", data.itemId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
