@@ -54,7 +54,7 @@ function ValuesPage() {
         ) : items && items.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {items.map((i) => (
-              <ItemCard key={i.id} item={i} />
+              <ItemCard key={i.id} item={i} showValue />
             ))}
           </div>
         ) : (

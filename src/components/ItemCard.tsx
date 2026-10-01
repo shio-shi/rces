@@ -19,7 +19,15 @@ export function ItemThumb({ item, className = "" }: { item: Item; className?: st
   );
 }
 
-export function ItemCard({ item, priceLabel }: { item: Item; priceLabel?: string }) {
+export function ItemCard({
+  item,
+  priceLabel,
+  showValue,
+}: {
+  item: Item;
+  priceLabel?: string;
+  showValue?: boolean;
+}) {
   const limited = isLimitedNow(item);
   return (
     <Link
@@ -48,7 +56,11 @@ export function ItemCard({ item, priceLabel }: { item: Item; priceLabel?: string
             ) : (
               <>
                 <RawbuxIcon />
-                {limited ? item.rap.toLocaleString("en-US") : item.price.toLocaleString("en-US")}
+                {showValue
+                  ? item.value.toLocaleString("en-US")
+                  : limited
+                    ? item.rap.toLocaleString("en-US")
+                    : item.price.toLocaleString("en-US")}
               </>
             )}
           </span>
