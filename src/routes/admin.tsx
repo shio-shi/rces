@@ -7,6 +7,7 @@ import {
   adminBanUser,
   adminCreatePromocode,
   adminDeleteItem,
+  adminEditItem,
   adminFindUser,
   adminGetInventory,
   adminGiveItem,
@@ -678,6 +679,7 @@ function AdminPage() {
                   {i.kind} · {i.class === "limitedu" ? "Limited U" : i.class} · {i.price.toLocaleString("en-US")} Rawbux
                   {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
                 </span>
+                <EditEditor item={i} onSaved={reloadItems} />
                 <ValueEditor item={i} onSaved={reloadItems} />
                 {i.class !== "normal" && <RestockEditor item={i} onSaved={reloadItems} />}
                 <button

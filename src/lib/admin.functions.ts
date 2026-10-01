@@ -292,6 +292,22 @@ export const adminRestockItem = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const adminEditItem = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string; name: string; description: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const name = data.name.trim();
+    if (!name) throw new Error("Name cannot be empty.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("items")
+      .update({ name, description: data.description })
+      .eq("id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const adminGetInventory = createServerFn({ method: "POST" })
   .inputValidator((data: { userId: string }) => data)
   .handler(async ({ data }) => {
