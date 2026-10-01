@@ -84,6 +84,7 @@ type AdminItem = {
   value: number;
   stock: number | null;
   sale_ends_at: string | null;
+  description: string;
 };
 
 type InventoryRow = {
@@ -694,6 +695,67 @@ function AdminPage() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function EditEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void | Promise<void> }) {
+  const editItem = useServerFn(adminEditItem);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(item.name);
+  const [desc, setDesc] = useState(item.description ?? "");
+  const [busy, setBusy] = useState(false);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
+      >
+        Edit
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex w-full flex-wrap items-center gap-2 rounded-md border border-border p-2">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Name"
+        className="h-7 w-48 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
+      />
+      <input
+        value={desc}
+        onChange={(e) => setDesc(e.target.value)}
+        placeholder="Description"
+        className="h-7 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
+      />
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await editItem({ data: { itemId: item.id, name, description: desc } });
+            toast.success("Item updated.");
+            setOpen(false);
+            await onSaved();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to update item.");
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="rounded-md bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+      >
+        Save
+      </button>
+      <button
+        onClick={() => setOpen(false)}
+        className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
+      >
+        Cancel
+      </button>
+    </div>
   );
 }
 

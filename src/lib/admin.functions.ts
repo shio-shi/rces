@@ -228,7 +228,7 @@ export const adminListItems = createServerFn({ method: "GET" }).handler(async ()
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("items")
-    .select("id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at")
+    .select("id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at, description")
     .order("created_at", { ascending: false })
     .limit(200);
   return data ?? [];
