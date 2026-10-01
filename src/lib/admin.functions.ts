@@ -154,6 +154,21 @@ export const adminResetRawbux = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const adminResetPassword = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string; newPassword: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    if (!data.newPassword || data.newPassword.length < 6)
+      throw new Error("Password must be at least 6 characters.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      password: data.newPassword,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const adminListPromocodes = createServerFn({ method: "GET" }).handler(async () => {
   const { requireAdmin } = await import("./admin.server");
   await requireAdmin();

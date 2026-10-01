@@ -13,6 +13,7 @@ import {
   adminGrantRawbux,
   adminRemoveUserItem,
   adminResetRawbux,
+  adminResetPassword,
   adminListItems,
   adminListPromocodes,
   adminLogin,
@@ -101,6 +102,7 @@ function AdminPage() {
   const unban = useServerFn(adminUnbanUser);
   const grant = useServerFn(adminGrantRawbux);
   const resetRawbux = useServerFn(adminResetRawbux);
+  const resetPassword = useServerFn(adminResetPassword);
   const listCodes = useServerFn(adminListPromocodes);
   const createCode = useServerFn(adminCreatePromocode);
   const setCodeActive = useServerFn(adminSetPromocodeActive);
@@ -509,6 +511,21 @@ function AdminPage() {
                 className="rounded-md bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground hover:opacity-90"
               >
                 Reset Rawbux
+              </button>
+              <button
+                onClick={async () => {
+                  const pw = window.prompt(`New password for ${user.username} (min 6 characters):`);
+                  if (!pw) return;
+                  try {
+                    await resetPassword({ data: { userId: user.id, newPassword: pw } });
+                    toast.success("Password reset.");
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Failed to reset password.");
+                  }
+                }}
+                className="rounded-md bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground hover:opacity-90"
+              >
+                Reset Password
               </button>
             </div>
 
