@@ -399,3 +399,63 @@ export const adminDeleteItem = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export const adminSetAccessory = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      itemId: string;
+      meta: Record<string, unknown>;
+      meshB64?: string | null;
+      textureDataUrl?: string | null;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const fetchAsset = async (id: unknown) => {
+      if (typeof id !== "string" || !/^\d+$/.test(id)) return null;
+      try {
+        const res = await fetch(`https://assetdelivery.roblox.com/v1/asset/?id=${id}`);
+        if (!res.ok) return null;
+        return { bytes: Buffer.from(await res.arrayBuffer()), type: res.headers.get("content-type") ?? "" };
+      } catch {
+        return null;
+      }
+    };
+    let mesh = data.meshB64 ?? null;
+    if (!mesh) {
+      const a = await fetchAsset(data.meta.meshId);
+      if (a && a.bytes.subarray(0, 8).toString() === "version ") mesh = a.bytes.toString("base64");
+    }
+    if (!mesh)
+      throw new Error(
+        "Roblox blocked the mesh download. Please also attach the accessory's .mesh file.",
+      );
+    let texture = data.textureDataUrl ?? null;
+    if (!texture) {
+      const t = await fetchAsset(data.meta.textureId);
+      if (t && t.type.startsWith("image/"))
+        texture = `data:${t.type};base64,${t.bytes.toString("base64")}`;
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("item_accessories").upsert({
+      item_id: data.itemId,
+      meta: data.meta as never,
+      mesh_b64: mesh,
+      texture_data_url: texture,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const, hasTexture: !!texture };
+  });
+
+export const adminRemoveAccessory = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("item_accessories").delete().eq("item_id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });

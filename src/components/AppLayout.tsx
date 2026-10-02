@@ -9,6 +9,7 @@ import {
   Gift,
   Trophy,
   Gem,
+  PersonStanding,
   Settings,
   Search,
   Loader2,
@@ -22,6 +23,7 @@ import { RawbuxIcon } from "@/components/RawbuxIcon";
 const NAV = [
   { to: "/", label: "Home", icon: Home },
   { to: "/profile", label: "Profile", icon: User },
+  { to: "/avatar", label: "Avatar", icon: PersonStanding },
   { to: "/friends", label: "Friends", icon: Users },
   { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/trade", label: "Trade", icon: Repeat },

@@ -83,6 +83,38 @@ export type Database = {
         }
         Relationships: []
       }
+      item_accessories: {
+        Row: {
+          item_id: string
+          mesh_b64: string | null
+          meta: Json
+          texture_data_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          item_id: string
+          mesh_b64?: string | null
+          meta?: Json
+          texture_data_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          item_id?: string
+          mesh_b64?: string | null
+          meta?: Json
+          texture_data_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_accessories_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           class: Database["public"]["Enums"]["item_class"]
@@ -133,10 +165,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_colors: Json
           ban_reason: string | null
           ban_until: string | null
           created_at: string
           description: string
+          equipped_items: string[]
           id: string
           inventory_private: boolean
           is_banned: boolean
@@ -145,10 +179,12 @@ export type Database = {
           username: string
         }
         Insert: {
+          avatar_colors?: Json
           ban_reason?: string | null
           ban_until?: string | null
           created_at?: string
           description?: string
+          equipped_items?: string[]
           id: string
           inventory_private?: boolean
           is_banned?: boolean
@@ -157,10 +193,12 @@ export type Database = {
           username: string
         }
         Update: {
+          avatar_colors?: Json
           ban_reason?: string | null
           ban_until?: string | null
           created_at?: string
           description?: string
+          equipped_items?: string[]
           id?: string
           inventory_private?: boolean
           is_banned?: boolean
@@ -409,6 +447,10 @@ export type Database = {
       }
       respond_trade: {
         Args: { _accept: boolean; _trade_id: string }
+        Returns: string
+      }
+      save_avatar: {
+        Args: { _colors: Json; _equipped: string[] }
         Returns: string
       }
       send_friend_request: { Args: { _target: string }; Returns: string }
