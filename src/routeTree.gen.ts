@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AvatarRouteImport } from './routes/avatar'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as InventoryRouteImport } from './routes/inventory'
@@ -38,6 +39,11 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AvatarRoute = AvatarRouteImport.update({
+  id: '/avatar',
+  path: '/avatar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogRoute = CatalogRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/avatar': typeof AvatarRoute
   '/catalog': typeof CatalogRoute
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/avatar': typeof AvatarRoute
   '/catalog': typeof CatalogRoute
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/avatar': typeof AvatarRoute
   '/catalog': typeof CatalogRoute
   '/friends': typeof FriendsRoute
   '/inventory': typeof InventoryRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/avatar'
     | '/catalog'
     | '/friends'
     | '/inventory'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/avatar'
     | '/catalog'
     | '/friends'
     | '/inventory'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/avatar'
     | '/catalog'
     | '/friends'
     | '/inventory'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  AvatarRoute: typeof AvatarRoute
   CatalogRoute: typeof CatalogRoute
   FriendsRoute: typeof FriendsRoute
   InventoryRoute: typeof InventoryRoute
@@ -246,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/avatar': {
+      id: '/avatar'
+      path: '/avatar'
+      fullPath: '/avatar'
+      preLoaderRoute: typeof AvatarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog': {
@@ -339,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  AvatarRoute: AvatarRoute,
   CatalogRoute: CatalogRoute,
   FriendsRoute: FriendsRoute,
   InventoryRoute: InventoryRoute,
