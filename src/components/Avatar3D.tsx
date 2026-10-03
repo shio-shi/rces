@@ -125,10 +125,10 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
       meta.attachmentName && ATTACH[meta.attachmentName]
         ? meta.attachmentName
         : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
-    const charPos = ATTACH[name];
+    const charPos = ATTACH[name] ?? [0, 5.1, 0];
     const charM = new THREE.Matrix4().makeTranslation(...charPos);
     if (name === "RightGripAttachment") charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
-    const r = meta.attachmentRot;
+    const r = (meta.attachmentRot?.length === 9 ? meta.attachmentRot : [1, 0, 0, 0, 1, 0, 0, 0, 1]) as [number, number, number, number, number, number, number, number, number];
     const accM = new THREE.Matrix4().set(
       r[0], r[1], r[2], meta.attachmentPos[0],
       r[3], r[4], r[5], meta.attachmentPos[1],
