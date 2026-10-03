@@ -113,51 +113,32 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   useEffect(() => {
     if (!acc.texture_data_url) return setTexture(null);
-    const t = new THREE.TextureLoader().load(acc.texture_data_url);
-    t.colorSpace = THREE.SRGBColorSpace;
-    setTexture(t);
-    return () => t.dispose();
+    let cancelled = false;
+    let tex: THREE.Texture | null = null;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (cancelled) return;
+      tex = new THREE.Texture(img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.flipY = false;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.needsUpdate = true;
+      setTexture(tex);
+    };
+    img.onerror = () => console.warn("Accessory texture failed to load");
+    img.src = acc.texture_data_url;
+    return () => {
+      cancelled = true;
+      tex?.dispose();
+    };
   }, [acc.texture_data_url]);
-
-  const matrix = useMemo(() => {
-    const meta = acc.meta;
-    const name =
-      meta.attachmentName && ATTACH[meta.attachmentName]
-        ? meta.attachmentName
-        : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
-    const charPos = ATTACH[name] ?? [0, 5.1, 0];
-    const charM = new THREE.Matrix4().makeTranslation(...charPos);
-    if (name === "RightGripAttachment") charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
-    const r = (meta.attachmentRot?.length === 9 ? meta.attachmentRot : [1, 0, 0, 0, 1, 0, 0, 0, 1]) as [number, number, number, number, number, number, number, number, number];
-    const accM = new THREE.Matrix4().set(
-      r[0], r[1], r[2], meta.attachmentPos[0],
-      r[3], r[4], r[5], meta.attachmentPos[1],
-      r[6], r[7], r[8], meta.attachmentPos[2],
-      0, 0, 0, 1,
-    );
-    const handle = charM.multiply(accM.invert());
-    // Mesh scale inside the handle
-    let s = new THREE.Vector3(...meta.scale);
-    if (meta.isMeshPart && geometry?.boundingBox) {
-      const size = geometry.boundingBox.getSize(new THREE.Vector3());
-      s = new THREE.Vector3(
-        size.x ? meta.handleSize[0] / size.x : 1,
-        size.y ? meta.handleSize[1] / size.y : 1,
-        size.z ? meta.handleSize[2] / size.z : 1,
-      );
-    }
-    const local = new THREE.Matrix4().compose(
-      new THREE.Vector3(...meta.offset),
-      new THREE.Quaternion(),
-      s,
-    );
-    return handle.multiply(local);
-  }, [acc, geometry]);
-
+...
   if (!geometry) return null;
   return (
     <mesh geometry={geometry} matrix={matrix} matrixAutoUpdate={false} castShadow>
       <meshStandardMaterial
+        key={texture ? texture.uuid : "none"}
         map={texture}
         color={texture ? "#ffffff" : "#a3a2a5"}
         roughness={0.6}
