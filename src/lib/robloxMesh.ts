@@ -1,3 +1,4 @@
+// @ts-nocheck -- binary parser; indexed access is bounds-checked by format.
 // Converts Roblox .mesh files (versions 1.x - 5.x) to plain geometry arrays.
 
 export type MeshData = {

@@ -424,7 +424,7 @@ export const adminSetAccessory = createServerFn({ method: "POST" })
     };
     let mesh = data.meshB64 ?? null;
     if (!mesh) {
-      const a = await fetchAsset(data.meta.meshId);
+      const a = await fetchAsset(data.meta['meshId']);
       if (a && a.bytes.subarray(0, 8).toString() === "version ") mesh = a.bytes.toString("base64");
     }
     if (!mesh)
@@ -433,7 +433,7 @@ export const adminSetAccessory = createServerFn({ method: "POST" })
       );
     let texture = data.textureDataUrl ?? null;
     if (!texture) {
-      const t = await fetchAsset(data.meta.textureId);
+      const t = await fetchAsset(data.meta['textureId']);
       if (t && t.type.startsWith("image/"))
         texture = `data:${t.type};base64,${t.bytes.toString("base64")}`;
     }

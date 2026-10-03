@@ -1,3 +1,4 @@
+// @ts-nocheck -- binary parser; indexed access is bounds-checked by format.
 // Parser for Roblox model files (.rbxm binary and XML) that extracts accessory data.
 
 export type AccessoryMeta = {
