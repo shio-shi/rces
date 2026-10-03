@@ -35,7 +35,7 @@ function parseV1(text: string, version: string): MeshData {
     const b = v * 9;
     positions.set([nums[b] * scale, nums[b + 1] * scale, nums[b + 2] * scale], v * 3);
     normals.set([nums[b + 3], nums[b + 4], nums[b + 5]], v * 3);
-    uvs.set([nums[b + 6], 1 - nums[b + 7]], v * 2);
+    uvs.set([nums[b + 6], nums[b + 7]], v * 2);
   }
   return { positions, normals, uvs, indices: Uint32Array.from({ length: nVerts }, (_, i) => i) };
 }
@@ -82,7 +82,7 @@ export function parseRobloxMesh(bytes: Uint8Array): MeshData {
     normals[i * 3 + 1] = dv.getFloat32(b + 16, true);
     normals[i * 3 + 2] = dv.getFloat32(b + 20, true);
     uvs[i * 2] = dv.getFloat32(b + 24, true);
-    uvs[i * 2 + 1] = 1 - dv.getFloat32(b + 28, true);
+    uvs[i * 2 + 1] = dv.getFloat32(b + 28, true);
   }
   p += nVerts * vSize;
   if (major >= 4 && nBones > 0) p += nVerts * 8;

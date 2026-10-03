@@ -113,10 +113,25 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   useEffect(() => {
     if (!acc.texture_data_url) return setTexture(null);
-    const t = new THREE.TextureLoader().load(acc.texture_data_url);
-    t.colorSpace = THREE.SRGBColorSpace;
-    setTexture(t);
-    return () => t.dispose();
+    let cancelled = false;
+    let tex: THREE.Texture | null = null;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (cancelled) return;
+      tex = new THREE.Texture(img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.flipY = false;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.needsUpdate = true;
+      setTexture(tex);
+    };
+    img.onerror = () => console.warn("Accessory texture failed to load");
+    img.src = acc.texture_data_url;
+    return () => {
+      cancelled = true;
+      tex?.dispose();
+    };
   }, [acc.texture_data_url]);
 
   const matrix = useMemo(() => {
@@ -158,6 +173,7 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
   return (
     <mesh geometry={geometry} matrix={matrix} matrixAutoUpdate={false} castShadow>
       <meshStandardMaterial
+        key={texture ? texture.uuid : "none"}
         map={texture}
         color={texture ? "#ffffff" : "#a3a2a5"}
         roughness={0.6}
