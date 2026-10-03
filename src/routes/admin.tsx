@@ -8,6 +8,8 @@ import {
   adminCreatePromocode,
   adminDeleteItem,
   adminEditItem,
+  adminSetAccessory,
+  adminRemoveAccessory,
   adminFindUser,
   adminGetInventory,
   adminGiveItem,
@@ -681,6 +683,7 @@ function AdminPage() {
                   {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
                 </span>
                 <EditEditor item={i} onSaved={reloadItems} />
+                <AccessoryEditor item={i} />
                 <ValueEditor item={i} onSaved={reloadItems} />
                 {i.class !== "normal" && <RestockEditor item={i} onSaved={reloadItems} />}
                 <button
@@ -884,6 +887,76 @@ function ValueEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void |
       >
         Save
       </button>
+    </div>
+  );
+}
+
+function AccessoryEditor({ item }: { item: AdminItem }) {
+  const setAcc = useServerFn(adminSetAccessory);
+  const removeAcc = useServerFn(adminRemoveAccessory);
+  const [open, setOpen] = useState(false);
+  const [rbxm, setRbxm] = useState<File | null>(null);
+  const [mesh, setMesh] = useState<File | null>(null);
+  const [tex, setTex] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!open)
+    return (
+      <button onClick={() => setOpen(true)} className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface">
+        3D model
+      </button>
+    );
+  const upload = async () => {
+    if (!rbxm) {
+      toast.error("Choose a .rbxm file first.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { parseRbxm } = await import("@/lib/rbxm");
+      const { parseRobloxMesh, bytesToBase64 } = await import("@/lib/robloxMesh");
+      const meta = parseRbxm(await rbxm.arrayBuffer());
+      let meshB64: string | null = null;
+      if (mesh) {
+        const bytes = new Uint8Array(await mesh.arrayBuffer());
+        parseRobloxMesh(bytes);
+        meshB64 = bytesToBase64(bytes);
+      }
+      let textureDataUrl: string | null = null;
+      if (tex)
+        textureDataUrl = await new Promise<string>((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.onerror = rej;
+          r.readAsDataURL(tex);
+        });
+      const out = await setAcc({ data: { itemId: item.id, meta: meta as never, meshB64, textureDataUrl } });
+      toast.success(out.hasTexture ? "3D accessory attached." : "3D accessory attached (no texture).");
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const field = "text-xs file:mr-2 file:rounded file:border file:border-border file:bg-card file:px-2 file:py-0.5";
+  return (
+    <div className="flex w-full flex-col gap-2 rounded-md border border-border p-2 text-xs">
+      <label>Accessory (.rbxm / .rbxmx) <input type="file" accept=".rbxm,.rbxmx" className={field} onChange={(e) => setRbxm(e.target.files?.[0] ?? null)} /></label>
+      <label>Mesh (.mesh, optional) <input type="file" accept=".mesh" className={field} onChange={(e) => setMesh(e.target.files?.[0] ?? null)} /></label>
+      <label>Texture (image, optional) <input type="file" accept="image/*" className={field} onChange={(e) => setTex(e.target.files?.[0] ?? null)} /></label>
+      <div className="flex gap-2">
+        <button disabled={busy} onClick={upload} className="rounded-md bg-primary px-3 py-1 font-bold text-primary-foreground disabled:opacity-50">{busy ? "Uploading..." : "Upload"}</button>
+        <button
+          onClick={async () => {
+            await removeAcc({ data: { itemId: item.id } });
+            toast.success("3D model removed.");
+          }}
+          className="rounded-md border border-border px-3 py-1 font-bold"
+        >
+          Remove 3D
+        </button>
+        <button onClick={() => setOpen(false)} className="rounded-md border border-border px-3 py-1 font-bold">Cancel</button>
+      </div>
     </div>
   );
 }
