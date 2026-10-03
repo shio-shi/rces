@@ -906,7 +906,10 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
       </button>
     );
   const upload = async () => {
-    if (!rbxm) return toast.error("Choose a .rbxm file first.");
+    if (!rbxm) {
+      toast.error("Choose a .rbxm file first.");
+      return;
+    }
     setBusy(true);
     try {
       const { parseRbxm } = await import("@/lib/rbxm");
