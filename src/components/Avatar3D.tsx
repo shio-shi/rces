@@ -216,16 +216,16 @@ function Character({ colors, accessories }: { colors: AvatarColors; accessories:
   return (
     <group>
       {headGeo ? (
-        <mesh geometry={headGeo} position={[0, 4.6, 0]} castShadow>
+        <mesh geometry={headGeo} position={[0, 4.5, 0]} castShadow>
           <meshStandardMaterial color={colors.head} roughness={0.55} />
         </mesh>
       ) : (
-        <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.4} smoothness={16} position={[0, 4.6, 0]} castShadow>
+        <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.4} smoothness={16} position={[0, 4.5, 0]} castShadow>
           <meshStandardMaterial color={colors.head} roughness={0.55} />
         </RoundedBox>
       )}
       {face && (
-        <mesh position={[0, 4.6, -0.601]} rotation={[0, Math.PI, 0]}>
+        <mesh position={[0, 4.5, -0.601]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[0.9, 0.9]} />
           <meshStandardMaterial map={face} transparent roughness={0.55} />
         </mesh>
