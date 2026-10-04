@@ -121,7 +121,7 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
       if (cancelled) return;
       tex = new THREE.Texture(img);
       tex.colorSpace = THREE.SRGBColorSpace;
-      tex.flipY = false;
+      tex.flipY = true;
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.needsUpdate = true;
       setTexture(tex);
