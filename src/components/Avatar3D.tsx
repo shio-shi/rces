@@ -274,19 +274,7 @@ export function Avatar3D({
   maxDistance={16}
   maxPolarAngle={Math.PI * 0.6}
   />
-        <OrbitControls
-          <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-  <planeGeometry args={[20, 20]} />
-  <shadowMaterial opacity={0.25} />
-</mesh>
-          ref={controls}
-          target={[0, 3, 0]}
-          enablePan={false}
-          minDistance={5}
-          maxDistance={16}
-          maxPolarAngle={Math.PI * 0.6}
-        />
-      </Canvas>
+</Canvas>
       <button
         onClick={() => controls.current?.reset()}
         className="absolute bottom-2 right-2 rounded-md border border-border bg-card px-2 py-1 text-xs font-bold hover:bg-accent"
