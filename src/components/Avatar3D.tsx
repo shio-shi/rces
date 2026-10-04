@@ -189,7 +189,7 @@ function Character({ colors, accessories }: { colors: AvatarColors; accessories:
   const face = useFaceTexture();
   return (
     <group>
-      <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.15} smoothness={8} position={[0, 4.6, 0]} castShadow>
+      <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.4} smoothness={16} position={[0, 4.6, 0]} castShadow>
         <meshStandardMaterial color={colors.head} roughness={0.55} />
       </RoundedBox>
       {face && (
