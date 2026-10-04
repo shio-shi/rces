@@ -78,28 +78,6 @@ function useFaceTexture() {
   return tex;
 }
 
-// Classic cylinder head: 1.2 wide x 1.2 tall with slightly rounded top/bottom edges.
-function useHeadGeometry() {
-  return useMemo(() => {
-    const R = 0.6; // radius (1.2 wide)
-    const H = 1.2; // height
-    const E = 0.12; // edge rounding
-    const seg = 10;
-    const pts: THREE.Vector2[] = [new THREE.Vector2(0.001, -H / 2)];
-    for (let i = 0; i <= seg; i++) {
-      const a = -Math.PI / 2 + (i / seg) * (Math.PI / 2);
-      pts.push(new THREE.Vector2(R - E + E * Math.cos(a), -(H / 2 - E) + E * Math.sin(a)));
-    }
-    for (let i = 0; i <= seg; i++) {
-      const a = (i / seg) * (Math.PI / 2);
-      pts.push(new THREE.Vector2(R - E + E * Math.cos(a), H / 2 - E + E * Math.sin(a)));
-    }
-    pts.push(new THREE.Vector2(0.001, H / 2));
-    const g = new THREE.LatheGeometry(pts, 48);
-    g.computeVertexNormals();
-    return g;
-  }, []);
-}
 
 function Part({
   size,
@@ -209,12 +187,11 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
 
 function Character({ colors, accessories }: { colors: AvatarColors; accessories: LoadedAccessory[] }) {
   const face = useFaceTexture();
-  const headGeo = useHeadGeometry();
   return (
     <group>
-      <mesh geometry={headGeo} position={[0, 4.6, 0]} castShadow>
+      <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.15} smoothness={8} position={[0, 4.6, 0]} castShadow>
         <meshStandardMaterial color={colors.head} roughness={0.55} />
-      </mesh>
+      </RoundedBox>
       {face && (
         <mesh position={[0, 4.6, -0.601]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[0.9, 0.9]} />
