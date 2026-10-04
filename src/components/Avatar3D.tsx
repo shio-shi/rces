@@ -284,3 +284,4 @@ export function Avatar3D({
     </div>
   );
 }
+// removed floor disc.
