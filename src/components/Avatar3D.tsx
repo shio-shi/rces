@@ -226,7 +226,7 @@ function Character({ colors, accessories }: { colors: AvatarColors; accessories:
       )}
       {face && (
         <mesh position={[0, 4.53, -0.601]} rotation={[0, Math.PI, 0]}>
-          <planeGeometry args={[1.2, 1.2]} />
+          <planeGeometry args={[1.1, 1.1]} />
           <meshStandardMaterial map={face} transparent roughness={0.55} />
         </mesh>
       )}
