@@ -77,7 +77,8 @@ function AvatarPage() {
     queryKey: ["avatar-owned", uid],
     enabled: !!uid,
     queryFn: async () => {
-      const { data } = await supabase.from("user_items").select("item:items(*)").eq("user_id", uid!);
+  const { data, error } = await supabase.from("user_items").select("item:items(*)").eq("user_id", uid!);
+  if (error) throw error;
       const map = new Map<string, Item>();
       for (const r of (data ?? []) as unknown as { item: Item | null }[]) if (r.item) map.set(r.item.id, r.item);
       const items = [...map.values()];
@@ -89,7 +90,7 @@ function AvatarPage() {
       return items.map((i) => ({ ...i, has3d: has3d.has(i.id) }));
     },
   });
-
+useEffect(() => { ... }, [owned, equipped]);
   const { data: accessories } = useQuery({
     queryKey: ["avatar-acc", [...equipped].sort().join(",")],
     enabled: equipped.length > 0,
