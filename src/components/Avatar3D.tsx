@@ -6,6 +6,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { parseRobloxMesh, base64ToBytes } from "@/lib/robloxMesh";
 import type { AccessoryMeta } from "@/lib/rbxm";
 import faceAsset from "@/assets/classic-face.png.asset.json";
+import headAsset from "@/assets/classic-head.mesh.asset.json";
 
 export type AvatarColors = {
   head: string;
@@ -76,6 +77,30 @@ function useFaceTexture() {
     };
   }, []);
   return tex;
+}
+function useHeadMesh() {
+  const [geo, setGeo] = useState<THREE.BufferGeometry | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let g: THREE.BufferGeometry | null = null;
+    fetch(headAsset.url)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => {
+        if (cancelled) return;
+        const m = parseRobloxMesh(new Uint8Array(buf));
+        g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.BufferAttribute(m.positions, 3));
+        g.setAttribute("normal", new THREE.BufferAttribute(m.normals, 3));
+        g.setIndex(new THREE.BufferAttribute(m.indices, 1));
+        setGeo(g);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      g?.dispose();
+    };
+  }, []);
+  return geo;
 }
 
 
@@ -187,11 +212,18 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
 
 function Character({ colors, accessories }: { colors: AvatarColors; accessories: LoadedAccessory[] }) {
   const face = useFaceTexture();
+  const headGeo = useHeadMesh();
   return (
     <group>
-      <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.4} smoothness={16} position={[0, 4.6, 0]} castShadow>
-        <meshStandardMaterial color={colors.head} roughness={0.55} />
-      </RoundedBox>
+      {headGeo ? (
+        <mesh geometry={headGeo} position={[0, 4.6, 0]} castShadow>
+          <meshStandardMaterial color={colors.head} roughness={0.55} />
+        </mesh>
+      ) : (
+        <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.4} smoothness={16} position={[0, 4.6, 0]} castShadow>
+          <meshStandardMaterial color={colors.head} roughness={0.55} />
+        </RoundedBox>
+      )}
       {face && (
         <mesh position={[0, 4.6, -0.601]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[0.9, 0.9]} />
