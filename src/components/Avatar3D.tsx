@@ -262,6 +262,18 @@ export function Avatar3D({
           </Environment>
         </Suspense>
         <Character colors={colors} accessories={accessories} />
+        <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+  <planeGeometry args={[20, 20]} />
+  <shadowMaterial opacity={0.25} />
+</mesh>
+<OrbitControls
+  ref={controls}
+  target={[0, 3, 0]}
+  enablePan={false}
+  minDistance={5}
+  maxDistance={16}
+  maxPolarAngle={Math.PI * 0.6}
+  />
         <OrbitControls
           <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
   <planeGeometry args={[20, 20]} />
