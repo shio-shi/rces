@@ -77,8 +77,8 @@ function AvatarPage() {
     queryKey: ["avatar-owned", uid],
     enabled: !!uid,
     queryFn: async () => {
-  const { data, error } = await supabase.from("user_items").select("item:items(*)").eq("user_id", uid!);
-  if (error) throw error;
+      const { data, error } = await supabase.from("user_items").select("item:items(*)").eq("user_id", uid!);
+      if (error) throw error;
       const map = new Map<string, Item>();
       for (const r of (data ?? []) as unknown as { item: Item | null }[]) if (r.item) map.set(r.item.id, r.item);
       const items = [...map.values()];
@@ -90,19 +90,21 @@ function AvatarPage() {
       return items.map((i) => ({ ...i, has3d: has3d.has(i.id) }));
     },
   });
-// Drop equipped items the user no longer owns (e.g. traded limiteds)
-useEffect(() => {
-  if (!owned) return;
-  const ownedIds = new Set(owned.map((i) => i.id));
-  const stale = equipped.filter((id) => !ownedIds.has(id));
-  if (stale.length === 0) return;
-  setEquipped((e) => e.filter((id) => ownedIds.has(id)));
-  toast.info(
-    stale.length === 1
-      ? "An item was removed from your avatar because you no longer own it."
-      : `${stale.length} items were removed from your avatar because you no longer own them.`,
-  );
-}, [owned, equipped]);
+
+  // Drop equipped items the user no longer owns (e.g. traded limiteds)
+  useEffect(() => {
+    if (!owned) return;
+    const ownedIds = new Set(owned.map((i) => i.id));
+    const stale = equipped.filter((id) => !ownedIds.has(id));
+    if (stale.length === 0) return;
+    setEquipped((e) => e.filter((id) => ownedIds.has(id)));
+    toast.info(
+      stale.length === 1
+        ? "An item was removed from your avatar because you no longer own it."
+        : `${stale.length} items were removed from your avatar because you no longer own them.`,
+    );
+  }, [owned, equipped]);
+
   const { data: accessories } = useQuery({
     queryKey: ["avatar-acc", [...equipped].sort().join(",")],
     enabled: equipped.length > 0,
@@ -121,10 +123,13 @@ useEffect(() => {
     },
   });
 
-  const visibleAcc = useMemo(
-    () => (accessories ?? []).filter((a) => equipped.includes(a.itemId)),
-    [accessories, equipped],
-  );
+  // Only show equipped items in the 3D preview, and only ones the user still owns
+  const visibleAcc = useMemo(() => {
+    const ownedIds = owned ? new Set(owned.map((i) => i.id)) : null;
+    return (accessories ?? []).filter(
+      (a) => equipped.includes(a.itemId) && (!ownedIds || ownedIds.has(a.itemId)),
+    );
+  }, [accessories, equipped, owned]);
 
   const list = (owned ?? []).filter((i) => kind === "all" || i.kind === kind);
 
