@@ -114,7 +114,7 @@ function Part({
   color: string;
 }) {
   return (
-    <RoundedBox args={size} radius={0.10} smoothness={1.5} position={position} castShadow>
+    <RoundedBox args={size} radius={0.10} smoothness={1.3} position={position} castShadow>
       <meshStandardMaterial color={color} roughness={0.55} />
     </RoundedBox>
   );
