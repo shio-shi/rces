@@ -5,6 +5,7 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { parseRobloxMesh, base64ToBytes } from "@/lib/robloxMesh";
 import type { AccessoryMeta } from "@/lib/rbxm";
+import faceAsset from "@/assets/classic-face.png.asset.json";
 
 export type AvatarColors = {
   head: string;
@@ -55,25 +56,48 @@ const KIND_DEFAULT: Record<string, string> = {
 };
 
 function useFaceTexture() {
+  const [tex, setTex] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let t: THREE.Texture | null = null;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (cancelled) return;
+      t = new THREE.Texture(img);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.needsUpdate = true;
+      setTex(t);
+    };
+    img.src = faceAsset.url;
+    return () => {
+      cancelled = true;
+      t?.dispose();
+    };
+  }, []);
+  return tex;
+}
+
+// Classic cylinder head: 1.2 wide x 1.2 tall with slightly rounded top/bottom edges.
+function useHeadGeometry() {
   return useMemo(() => {
-    if (typeof document === "undefined") return null;
-    const c = document.createElement("canvas");
-    c.width = c.height = 256;
-    const g = c.getContext("2d")!;
-    g.fillStyle = "#111";
-    g.beginPath();
-    g.ellipse(92, 100, 12, 22, 0, 0, Math.PI * 2);
-    g.ellipse(164, 100, 12, 22, 0, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = "#111";
-    g.lineWidth = 12;
-    g.lineCap = "round";
-    g.beginPath();
-    g.arc(128, 128, 62, Math.PI * 0.18, Math.PI * 0.82);
-    g.stroke();
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
+    const R = 0.6; // radius (1.2 wide)
+    const H = 1.2; // height
+    const E = 0.12; // edge rounding
+    const seg = 10;
+    const pts: THREE.Vector2[] = [new THREE.Vector2(0.001, -H / 2)];
+    for (let i = 0; i <= seg; i++) {
+      const a = -Math.PI / 2 + (i / seg) * (Math.PI / 2);
+      pts.push(new THREE.Vector2(R - E + E * Math.cos(a), -(H / 2 - E) + E * Math.sin(a)));
+    }
+    for (let i = 0; i <= seg; i++) {
+      const a = (i / seg) * (Math.PI / 2);
+      pts.push(new THREE.Vector2(R - E + E * Math.cos(a), H / 2 - E + E * Math.sin(a)));
+    }
+    pts.push(new THREE.Vector2(0.001, H / 2));
+    const g = new THREE.LatheGeometry(pts, 48);
+    g.computeVertexNormals();
+    return g;
   }, []);
 }
 
@@ -185,14 +209,15 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
 
 function Character({ colors, accessories }: { colors: AvatarColors; accessories: LoadedAccessory[] }) {
   const face = useFaceTexture();
+  const headGeo = useHeadGeometry();
   return (
     <group>
-      <RoundedBox args={[1.25, 1.2, 1.2]} radius={0.3} smoothness={5} position={[0, 4.6, 0]} castShadow>
+      <mesh geometry={headGeo} position={[0, 4.6, 0]} castShadow>
         <meshStandardMaterial color={colors.head} roughness={0.55} />
-      </RoundedBox>
+      </mesh>
       {face && (
-        <mesh position={[0, 4.6, -0.605]} rotation={[0, Math.PI, 0]}>
-          <planeGeometry args={[0.95, 0.95]} />
+        <mesh position={[0, 4.6, -0.601]} rotation={[0, Math.PI, 0]}>
+          <planeGeometry args={[0.9, 0.9]} />
           <meshStandardMaterial map={face} transparent roughness={0.55} />
         </mesh>
       )}
