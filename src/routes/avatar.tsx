@@ -90,7 +90,19 @@ function AvatarPage() {
       return items.map((i) => ({ ...i, has3d: has3d.has(i.id) }));
     },
   });
-useEffect(() => { ... }, [owned, equipped]);
+// Drop equipped items the user no longer owns (e.g. traded limiteds)
+useEffect(() => {
+  if (!owned) return;
+  const ownedIds = new Set(owned.map((i) => i.id));
+  const stale = equipped.filter((id) => !ownedIds.has(id));
+  if (stale.length === 0) return;
+  setEquipped((e) => e.filter((id) => ownedIds.has(id)));
+  toast.info(
+    stale.length === 1
+      ? "An item was removed from your avatar because you no longer own it."
+      : `${stale.length} items were removed from your avatar because you no longer own them.`,
+  );
+}, [owned, equipped]);
   const { data: accessories } = useQuery({
     queryKey: ["avatar-acc", [...equipped].sort().join(",")],
     enabled: equipped.length > 0,
