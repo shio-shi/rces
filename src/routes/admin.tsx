@@ -9,6 +9,7 @@ import {
   adminDeleteItem,
   adminEditItem,
   adminSetAccessory,
+  adminSetFace,
   adminRemoveAccessory,
   adminFindUser,
   adminGetInventory,
@@ -684,6 +685,7 @@ function AdminPage() {
                 </span>
                 <EditEditor item={i} onSaved={reloadItems} />
                 <AccessoryEditor item={i} />
+                {i.kind === "face" && <FaceEditor item={i} />}
                 <ValueEditor item={i} onSaved={reloadItems} />
                 {i.class !== "normal" && <RestockEditor item={i} onSaved={reloadItems} />}
                 <button
@@ -956,6 +958,90 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
           Remove 3D
         </button>
         <button onClick={() => setOpen(false)} className="rounded-md border border-border px-3 py-1 font-bold">Cancel</button>
+      </div>
+    </div>
+  );
+}
+function FaceEditor({ item }: { item: AdminItem }) {
+  const setFace = useServerFn(adminSetFace);
+  const removeAcc = useServerFn(adminRemoveAccessory);
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (!open)
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
+      >
+        Face image
+      </button>
+    );
+
+  const upload = async () => {
+    if (!file) {
+      toast.error("Choose a PNG file first.");
+      return;
+    }
+    if (file.type !== "image/png") {
+      toast.error("Only PNG images are supported.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      toast.error("The image must be under 1 MB.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result as string);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      await setFace({ data: { itemId: item.id, imageDataUrl: dataUrl } });
+      toast.success("Face image attached.");
+      setFile(null);
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-2 rounded-md border border-border p-2 text-xs">
+      <label>
+        Face image (PNG, same style as the default face){" "}
+        <input
+          type="file"
+          accept="image/png"
+          className="text-xs file:mr-2 file:rounded file:border file:border-border file:bg-card file:px-2 file:py-0.5"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
+      </label>
+      <div className="flex gap-2">
+        <button
+          disabled={busy}
+          onClick={upload}
+          className="rounded-md bg-primary px-3 py-1 font-bold text-primary-foreground disabled:opacity-50"
+        >
+          {busy ? "Uploading..." : "Upload"}
+        </button>
+        <button
+          onClick={async () => {
+            await removeAcc({ data: { itemId: item.id } });
+            toast.success("Face image removed.");
+          }}
+          className="rounded-md border border-border px-3 py-1 font-bold"
+        >
+          Remove image
+        </button>
+        <button onClick={() => setOpen(false)} className="rounded-md border border-border px-3 py-1 font-bold">
+          Cancel
+        </button>
       </div>
     </div>
   );
