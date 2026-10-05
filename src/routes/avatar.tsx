@@ -140,6 +140,9 @@ function AvatarPage() {
     [visibleAcc],
   );
 
+  // Face images have no mesh, so keep them out of the 3D accessory list
+  const meshAcc = useMemo(() => visibleAcc.filter((a) => !!a.mesh_b64), [visibleAcc]);
+
   const wornIds = (owned ?? [])
     .filter((i) => equipped.includes(i.id) && isClothingKind(i.kind))
     .map((i) => i.id)
@@ -221,7 +224,7 @@ function AvatarPage() {
             >
               <Avatar3D
                 colors={colors}
-                accessories={visibleAcc}
+                accessories={meshAcc}
                 clothing={visibleClothing}
                 faceUrl={faceUrl}
               />
