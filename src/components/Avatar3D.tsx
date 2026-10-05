@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { Environment, Lightformer, OrbitControls, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { RoundedBoxGeometry } from "three-stdlib";
 import { parseRobloxMesh, base64ToBytes } from "@/lib/robloxMesh";
 import type { AccessoryMeta } from "@/lib/rbxm";
 import faceAsset from "@/assets/classic-face.png.asset.json";
@@ -81,6 +82,7 @@ function useFaceTexture() {
   }, []);
   return tex;
 }
+
 function useHeadMesh() {
   const [geo, setGeo] = useState<THREE.BufferGeometry | null>(null);
   useEffect(() => {
@@ -106,6 +108,37 @@ function useHeadMesh() {
   return geo;
 }
 
+// Rounded box whose UVs are projected flat per face, so classic clothing
+// templates map correctly instead of smearing around the corners.
+function makeRoundedPartGeometry(size: [number, number, number], radius: number, smoothness: number) {
+  const [w, h, d] = size;
+  const g = new RoundedBoxGeometry(w, h, d, smoothness, radius);
+  const pos = g.attributes.position;
+  const uv = g.attributes.uv;
+  const index = g.index!;
+  for (const grp of g.groups) {
+    for (let i = grp.start; i < grp.start + grp.count; i++) {
+      const v = index.getX(i);
+      const x = pos.getX(v);
+      const y = pos.getY(v);
+      const z = pos.getZ(v);
+      let u = 0;
+      let t = 0;
+      // Face order: +x, -x, +y, -y, +z, -z (same as BoxGeometry)
+      switch (grp.materialIndex) {
+        case 0: u = 0.5 - z / d; t = 0.5 + y / h; break;
+        case 1: u = 0.5 + z / d; t = 0.5 + y / h; break;
+        case 2: u = 0.5 + x / w; t = 0.5 - z / d; break;
+        case 3: u = 0.5 + x / w; t = 0.5 + z / d; break;
+        case 4: u = 0.5 + x / w; t = 0.5 + y / h; break;
+        default: u = 0.5 - x / w; t = 0.5 + y / h; break;
+      }
+      uv.setXY(v, u, t);
+    }
+  }
+  uv.needsUpdate = true;
+  return g;
+}
 
 function Part({
   size,
@@ -129,17 +162,19 @@ function Part({
       }),
     [mats],
   );
-    const radius = 0.1;
-  const smoothness = 4;
 
-  if (mats)
-    return (
-      <RoundedBox args={size} radius={radius} smoothness={smoothness} position={position} material={mats} castShadow />
-    );
+  const geometry = useMemo(
+    () => makeRoundedPartGeometry(size, 0.1, 4),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [size[0], size[1], size[2]],
+  );
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  if (mats) return <mesh geometry={geometry} material={mats} position={position} castShadow />;
   return (
-    <RoundedBox args={size} radius={radius} smoothness={smoothness} position={position} castShadow>
+    <mesh geometry={geometry} position={position} castShadow>
       <meshStandardMaterial color={color} roughness={0.55} />
-    </RoundedBox>
+    </mesh>
   );
 }
 
@@ -315,18 +350,18 @@ export function Avatar3D({
         </Suspense>
         <Character colors={colors} accessories={accessories} clothing={clothing} />
         <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-  <planeGeometry args={[20, 20]} />
-  <shadowMaterial opacity={0.25} />
-</mesh>
-<OrbitControls
-  ref={controls}
-  target={[0, 3, 0]}
-  enablePan={false}
-  minDistance={5}
-  maxDistance={16}
-  maxPolarAngle={Math.PI * 0.6}
-  />
-</Canvas>
+          <planeGeometry args={[20, 20]} />
+          <shadowMaterial opacity={0.25} />
+        </mesh>
+        <OrbitControls
+          ref={controls}
+          target={[0, 3, 0]}
+          enablePan={false}
+          minDistance={5}
+          maxDistance={16}
+          maxPolarAngle={Math.PI * 0.6}
+        />
+      </Canvas>
       <button
         onClick={() => controls.current?.reset()}
         className="absolute bottom-2 right-2 rounded-md border border-border bg-card px-2 py-1 text-xs font-bold hover:bg-accent"
@@ -336,4 +371,3 @@ export function Avatar3D({
     </div>
   );
 }
-// removed floor disc.
