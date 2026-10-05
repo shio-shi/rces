@@ -193,7 +193,7 @@ const toggle = (id: string) => {
     const rest = slot
       ? e.filter((x) => slotOf(owned?.find((o) => o.id === x)) !== slot)
       : e;
-    return rest.length >= 12 ? rest : [...rest, id];
+    return rest.length >= 100 ? rest : [...rest, id];
   });
 };
 
