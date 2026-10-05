@@ -170,9 +170,11 @@ function Part({
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
 
-  if (mats) return <mesh geometry={geometry} material={mats} position={position} castShadow />;
+  // Different keys force React to build a fresh mesh when switching between the
+  // clothed and plain versions, so the material is never left in a default state.
+  if (mats) return <mesh key="clothed" geometry={geometry} material={mats} position={position} castShadow />;
   return (
-    <mesh geometry={geometry} position={position} castShadow>
+    <mesh key="plain" geometry={geometry} position={position} castShadow>
       <meshStandardMaterial color={color} roughness={0.55} />
     </mesh>
   );
