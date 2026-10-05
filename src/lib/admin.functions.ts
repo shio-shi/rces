@@ -459,3 +459,30 @@ export const adminRemoveAccessory = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+export const adminSetFace = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string; imageDataUrl: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    if (!data.imageDataUrl.startsWith("data:image/png;base64,"))
+      throw new Error("Face must be a PNG image.");
+    if (data.imageDataUrl.length > 1_500_000)
+      throw new Error("Face image is too large (max about 1 MB).");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: item } = await supabaseAdmin
+      .from("items")
+      .select("id, kind")
+      .eq("id", data.itemId)
+      .maybeSingle();
+    if (!item) throw new Error("Item not found");
+    if (item.kind !== "face") throw new Error("Only items of kind 'face' can have a face image.");
+    const { error } = await supabaseAdmin.from("item_accessories").upsert({
+      item_id: data.itemId,
+      meta: { decalFace: true } as never,
+      mesh_b64: "",
+      texture_data_url: data.imageDataUrl,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
