@@ -83,13 +83,25 @@ function AvatarPage() {
       const map = new Map<string, Item>();
       for (const r of (data ?? []) as unknown as { item: Item | null }[]) if (r.item) map.set(r.item.id, r.item);
       const items = [...map.values()];
+      
       const { data: acc } = await supabase
-        .from("item_accessories")
-        .select("item_id")
-        .in("item_id", items.length ? items.map((i) => i.id) : ["00000000-0000-0000-0000-000000000000"]);
-      const has3d = new Set((acc ?? []).map((a) => a.item_id));
-      return items.map((i) => ({ ...i, has3d: has3d.has(i.id) }));
-    },
+    .from("item_accessories")
+    .select("item_id, meta")
+    .in("item_id", items.length ? items.map((i) => i.id) : ["00000000-0000-0000-0000-000000000000"]);
+
+  const has3d = new Set((acc ?? []).map((a) => a.item_id));
+  // Rows with no attachment data are flat face images
+  const faceImages = new Set(
+    (acc ?? [])
+      .filter((a) => !(a.meta as unknown as AccessoryMeta | null)?.attachmentPos)
+      .map((a) => a.item_id),
+  );
+  return items.map((i) => ({
+    ...i,
+    has3d: has3d.has(i.id),
+    isFaceImage: i.kind === "face" && faceImages.has(i.id),
+    }));
+  },    
   });
 
   // Drop equipped items the user no longer owns (e.g. traded limiteds)
@@ -165,19 +177,25 @@ function AvatarPage() {
   const visibleClothing = (clothing ?? []).filter((c) => wornIds.includes(c.itemId));
 
   const list = (owned ?? []).filter((i) => kind === "all" || i.kind === kind);
+// Items that compete for the same slot: one shirt, one pants, one t-shirt, one face image.
+// 3D face accessories (shades, masks...) have no slot, so they stack.
+const slotOf = (i?: { kind: string; isFaceImage?: boolean }) =>
+  !i ? null
+  : isClothingKind(i.kind) ? i.kind
+  : i.isFaceImage ? "face-image"
+  : null;
 
-  const toggle = (id: string) => {
-    const it = owned?.find((i) => i.id === id);
-    setEquipped((e) => {
-      if (e.includes(id)) return e.filter((x) => x !== id);
-      // only one shirt / pants / t-shirt / face at a time
-      const exclusive = it && (isClothingKind(it.kind) || it.kind === "face");
-      const rest = exclusive
-        ? e.filter((x) => owned?.find((o) => o.id === x)?.kind !== it.kind)
-        : e;
-      return rest.length >= 12 ? rest : [...rest, id];
-    });
-  };
+const toggle = (id: string) => {
+  const it = owned?.find((i) => i.id === id);
+  setEquipped((e) => {
+    if (e.includes(id)) return e.filter((x) => x !== id);
+    const slot = slotOf(it);
+    const rest = slot
+      ? e.filter((x) => slotOf(owned?.find((o) => o.id === x)) !== slot)
+      : e;
+    return rest.length >= 12 ? rest : [...rest, id];
+  });
+};
 
   const pickColor = (c: string) =>
     setColors((prev) =>
