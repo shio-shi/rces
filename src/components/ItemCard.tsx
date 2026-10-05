@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CLASS_LABEL, isLimitedNow, type Item } from "@/lib/format";
+import { CLASS_LABEL, isLimitedNow, kindLabel, type Item } from "@/lib/format";
 import { RawbuxIcon } from "@/components/RawbuxIcon";
 
 export function ItemThumb({ item, className = "" }: { item: Item; className?: string }) {
@@ -23,10 +23,12 @@ export function ItemCard({
   item,
   priceLabel,
   showValue,
+  creator,
 }: {
   item: Item;
   priceLabel?: string;
   showValue?: boolean;
+  creator?: string | null;
 }) {
   const limited = isLimitedNow(item);
   return (
@@ -38,10 +40,15 @@ export function ItemCard({
       <ItemThumb item={item} className="aspect-square" />
       <div className="border-t border-border p-2">
         <div className="truncate text-sm font-semibold group-hover:text-primary">{item.name}</div>
+        {creator && (
+          <div className="truncate text-xs text-muted-foreground">
+            By <span className="font-semibold text-primary">{creator}</span>
+          </div>
+        )}
         <div className="mt-0.5 flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
             {item.class === "normal" ? (
-              <span className="capitalize">{item.kind}</span>
+              <span className="capitalize">{kindLabel(item.kind)}</span>
             ) : (
               <span
                 className={`font-bold ${item.class === "limitedu" ? "text-limitedu" : "text-limited"}`}

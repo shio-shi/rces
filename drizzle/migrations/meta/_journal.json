@@ -57,6 +57,13 @@
       "when": 1790933128979,
       "tag": "0007_avatar_system",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791195393656,
+      "tag": "0008_clothing",
+      "breakpoints": true
     }
   ]
 }

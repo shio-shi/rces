@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ItemThumb } from "@/components/ItemCard";
 import { RawbuxIcon } from "@/components/RawbuxIcon";
 import { useAuth } from "@/lib/auth";
-import { CLASS_LABEL, formatCountdown, isLimitedNow, num, type Item } from "@/lib/format";
+import { CLASS_LABEL, formatCountdown, isLimitedNow, kindLabel, num, type Item } from "@/lib/format";
 
 export const Route = createFileRoute("/item/$itemId")({
   head: () => ({
@@ -64,7 +64,16 @@ function ItemPage() {
         ...o,
         username: nameOf.get(o.user_id) ?? "Unknown",
       }));
-      return { item: item as Item, owners };
+      let creator: string | null = null;
+      if (item.creator_id) {
+        const { data: c } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", item.creator_id)
+          .maybeSingle();
+        creator = c?.username ?? "Unknown";
+      }
+      return { item: item as Item, owners, creator };
     },
   });
 
@@ -85,7 +94,7 @@ function ItemPage() {
     );
   }
 
-  const { item, owners } = data;
+  const { item, owners, creator } = data;
   const limited = isLimitedNow(item);
   const resellers = owners
     .filter((o) => o.sale_price !== null)
@@ -138,8 +147,20 @@ function ItemPage() {
             <h1 className="text-2xl font-bold">{item.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
               <span className="rounded bg-secondary px-2 py-0.5 font-semibold capitalize">
-                {item.kind}
+                {kindLabel(item.kind)}
               </span>
+              {creator && (
+                <span className="text-muted-foreground">
+                  By{" "}
+                  <Link
+                    to="/users/$username"
+                    params={{ username: creator }}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    {creator}
+                  </Link>
+                </span>
+              )}
               {item.class !== "normal" && (
                 <span
                   className={`rounded px-2 py-0.5 font-bold text-primary-foreground ${

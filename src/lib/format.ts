@@ -10,7 +10,7 @@ export const ITEM_KINDS = [
   "gear",
 ] as const;
 
-export type ItemKind = (typeof ITEM_KINDS)[number];
+export type ItemKind = (typeof ITEM_KINDS)[number] | "shirt" | "pants" | "tshirt";
 export type ItemClass = "normal" | "limited" | "limitedu";
 
 export const CLASS_LABEL: Record<ItemClass, string> = {
@@ -33,6 +33,7 @@ export type Item = {
   rap: number;
   value: number;
   created_at: string;
+  creator_id?: string | null;
 };
 
 export function isLimitedNow(item: Pick<Item, "class" | "sale_ends_at" | "stock">) {
@@ -55,4 +56,8 @@ export function formatCountdown(target: string | null) {
 
 export function num(n: number) {
   return n.toLocaleString("en-US");
+}
+
+export function kindLabel(kind: string) {
+  return kind === "tshirt" ? "T-Shirt" : kind === "shirt" ? "Shirt" : kind === "pants" ? "Pants" : kind;
 }

@@ -7,6 +7,9 @@ import { parseRobloxMesh, base64ToBytes } from "@/lib/robloxMesh";
 import type { AccessoryMeta } from "@/lib/rbxm";
 import faceAsset from "@/assets/classic-face.png.asset.json";
 import headAsset from "@/assets/classic-head.mesh.asset.json";
+import { buildPartMaterials, loadImage, type BodyPart, type ClothingKind, type Layer } from "@/lib/clothing";
+
+export type WornClothing = { itemId: string; kind: ClothingKind; template: string };
 
 export type AvatarColors = {
   head: string;
@@ -108,11 +111,30 @@ function Part({
   size,
   position,
   color,
+  part,
+  layers,
 }: {
   size: [number, number, number];
   position: [number, number, number];
   color: string;
+  part: BodyPart;
+  layers: Layer[];
 }) {
+  const mats = useMemo(() => buildPartMaterials(part, color, layers), [part, color, layers]);
+  useEffect(
+    () => () =>
+      mats?.forEach((m) => {
+        m.map?.dispose();
+        m.dispose();
+      }),
+    [mats],
+  );
+  if (mats)
+    return (
+      <mesh position={position} material={mats} castShadow>
+        <boxGeometry args={size} />
+      </mesh>
+    );
   return (
     <RoundedBox args={size} radius={0.10} smoothness={1.1} position={position} castShadow>
       <meshStandardMaterial color={color} roughness={0.55} />
@@ -210,7 +232,34 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
   );
 }
 
-function Character({ colors, accessories }: { colors: AvatarColors; accessories: LoadedAccessory[] }) {
+function useLayers(clothing: WornClothing[]) {
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const key = clothing.map((c) => c.itemId).join(",");
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(
+      clothing.map(async (c) => ({ kind: c.kind, img: await loadImage(c.template) }) as Layer),
+    )
+      .then((l) => !cancelled && setLayers(l))
+      .catch(() => !cancelled && setLayers([]));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return layers;
+}
+
+function Character({
+  colors,
+  accessories,
+  clothing,
+}: {
+  colors: AvatarColors;
+  accessories: LoadedAccessory[];
+  clothing: WornClothing[];
+}) {
+  const layers = useLayers(clothing);
   const face = useFaceTexture();
   const headGeo = useHeadMesh();
   return (
@@ -230,11 +279,11 @@ function Character({ colors, accessories }: { colors: AvatarColors; accessories:
           <meshStandardMaterial map={face} transparent roughness={0.55} />
         </mesh>
       )}
-      <Part size={[2, 2, 1]} position={[0, 3, 0]} color={colors.torso} />
-      <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} />
-      <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} />
-      <Part size={[0.98, 2, 1]} position={[-0.5, 1, 0]} color={colors.left_leg} />
-      <Part size={[0.98, 2, 1]} position={[0.5, 1, 0]} color={colors.right_leg} />
+      <Part size={[2, 2, 1]} position={[0, 3, 0]} color={colors.torso} part="torso" layers={layers} />
+      <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
+      <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
+      <Part size={[0.98, 2, 1]} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
+      <Part size={[0.98, 2, 1]} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
       {accessories.map((a) => (
         <Accessory key={a.itemId} acc={a} />
       ))}
@@ -245,9 +294,11 @@ function Character({ colors, accessories }: { colors: AvatarColors; accessories:
 export function Avatar3D({
   colors,
   accessories,
+  clothing = [],
 }: {
   colors: AvatarColors;
   accessories: LoadedAccessory[];
+  clothing?: WornClothing[];
 }) {
   const controls = useRef<OrbitControlsImpl>(null);
   return (
@@ -261,7 +312,7 @@ export function Avatar3D({
             <Lightformer intensity={1} position={[5, 2, 2]} rotation-y={-Math.PI / 2} scale={[10, 3, 1]} />
           </Environment>
         </Suspense>
-        <Character colors={colors} accessories={accessories} />
+        <Character colors={colors} accessories={accessories} clothing={clothing} />
         <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
   <planeGeometry args={[20, 20]} />
   <shadowMaterial opacity={0.25} />

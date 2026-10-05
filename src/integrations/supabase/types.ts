@@ -14,6 +14,32 @@ export type Database = {
   }
   public: {
     Tables: {
+      clothing_templates: {
+        Row: {
+          created_at: string
+          item_id: string
+          template_data_url: string
+        }
+        Insert: {
+          created_at?: string
+          item_id: string
+          template_data_url: string
+        }
+        Update: {
+          created_at?: string
+          item_id?: string
+          template_data_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clothing_templates_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follows: {
         Row: {
           created_at: string
@@ -120,6 +146,7 @@ export type Database = {
           class: Database["public"]["Enums"]["item_class"]
           copies_sold: number
           created_at: string
+          creator_id: string | null
           description: string
           id: string
           image_url: string | null
@@ -135,6 +162,7 @@ export type Database = {
           class?: Database["public"]["Enums"]["item_class"]
           copies_sold?: number
           created_at?: string
+          creator_id?: string | null
           description?: string
           id?: string
           image_url?: string | null
@@ -150,6 +178,7 @@ export type Database = {
           class?: Database["public"]["Enums"]["item_class"]
           copies_sold?: number
           created_at?: string
+          creator_id?: string | null
           description?: string
           id?: string
           image_url?: string | null
@@ -439,6 +468,17 @@ export type Database = {
         Args: { _item: Database["public"]["Tables"]["items"]["Row"] }
         Returns: boolean
       }
+      publish_clothing: {
+        Args: {
+          _description: string
+          _kind: string
+          _name: string
+          _price: number
+          _template: string
+          _thumb: string
+        }
+        Returns: string
+      }
       redeem_promocode: { Args: { _code: string }; Returns: string }
       remove_friend: { Args: { _other: string }; Returns: string }
       respond_friend_request: {
@@ -479,6 +519,9 @@ export type Database = {
         | "back"
         | "waist"
         | "gear"
+        | "shirt"
+        | "pants"
+        | "tshirt"
       trade_status: "pending" | "accepted" | "declined" | "cancelled"
     }
     CompositeTypes: {
@@ -620,6 +663,9 @@ export const Constants = {
         "back",
         "waist",
         "gear",
+        "shirt",
+        "pants",
+        "tshirt",
       ],
       trade_status: ["pending", "accepted", "declined", "cancelled"],
     },
