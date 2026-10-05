@@ -60,7 +60,7 @@ const KIND_DEFAULT: Record<string, string> = {
   gear: "RightGripAttachment",
 };
 
-function useFaceTexture() {
+function useFaceTexture(customUrl?: string | null) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -74,12 +74,16 @@ function useFaceTexture() {
       t.needsUpdate = true;
       setTex(t);
     };
-    img.src = faceAsset.url;
+    img.onerror = () => {
+      // If a custom face fails to load, fall back to the default face
+      if (!cancelled && customUrl) setTex(null);
+    };
+    img.src = customUrl || faceAsset.url;
     return () => {
       cancelled = true;
       t?.dispose();
     };
-  }, []);
+  }, [customUrl]);
   return tex;
 }
 
@@ -292,13 +296,15 @@ function Character({
   colors,
   accessories,
   clothing,
+  faceUrl,
 }: {
   colors: AvatarColors;
   accessories: LoadedAccessory[];
   clothing: WornClothing[];
+  faceUrl?: string | null;
 }) {
   const layers = useLayers(clothing);
-  const face = useFaceTexture();
+  const face = useFaceTexture(faceUrl);
   const headGeo = useHeadMesh();
   return (
     <group>
@@ -333,10 +339,12 @@ export function Avatar3D({
   colors,
   accessories,
   clothing = [],
+  faceUrl = null,
 }: {
   colors: AvatarColors;
   accessories: LoadedAccessory[];
   clothing?: WornClothing[];
+  faceUrl?: string | null;
 }) {
   const controls = useRef<OrbitControlsImpl>(null);
   return (
@@ -350,7 +358,7 @@ export function Avatar3D({
             <Lightformer intensity={1} position={[5, 2, 2]} rotation-y={-Math.PI / 2} scale={[10, 3, 1]} />
           </Environment>
         </Suspense>
-        <Character colors={colors} accessories={accessories} clothing={clothing} />
+        <Character colors={colors} accessories={accessories} clothing={clothing} faceUrl={faceUrl} />
         <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[20, 20]} />
           <shadowMaterial opacity={0.25} />
