@@ -129,14 +129,15 @@ function Part({
       }),
     [mats],
   );
+    const radius = 0.1;
+  const smoothness = 4;
+
   if (mats)
     return (
-      <mesh position={position} material={mats} castShadow>
-        <boxGeometry args={size} />
-      </mesh>
+      <RoundedBox args={size} radius={radius} smoothness={smoothness} position={position} material={mats} castShadow />
     );
   return (
-    <RoundedBox args={size} radius={0.10} smoothness={1.1} position={position} castShadow>
+    <RoundedBox args={size} radius={radius} smoothness={smoothness} position={position} castShadow>
       <meshStandardMaterial color={color} roughness={0.55} />
     </RoundedBox>
   );
