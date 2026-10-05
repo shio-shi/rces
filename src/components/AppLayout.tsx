@@ -9,6 +9,7 @@ import {
   Gift,
   Trophy,
   Gem,
+  Shirt,
   PersonStanding,
   Settings,
   Search,
@@ -30,6 +31,7 @@ const NAV = [
   { to: "/promocodes", label: "Promocodes", icon: Gift },
   { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { to: "/values", label: "Values", icon: Gem },
+  { to: "/create", label: "Create", icon: Shirt },
 ] as const;
 
 function BanScreen({

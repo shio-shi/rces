@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/lib/auth";
 import { ITEM_KINDS, type Item } from "@/lib/format";
-import type { AvatarColors, LoadedAccessory } from "@/components/Avatar3D";
+import type { AvatarColors, LoadedAccessory, WornClothing } from "@/components/Avatar3D";
+import { CLOTHING_KINDS, isClothingKind } from "@/lib/clothing";
 import type { AccessoryMeta } from "@/lib/rbxm";
 
 const Avatar3D = lazy(() => import("@/components/Avatar3D").then((m) => ({ default: m.Avatar3D })));
@@ -131,10 +132,40 @@ function AvatarPage() {
     );
   }, [accessories, equipped, owned]);
 
+  const wornIds = (owned ?? [])
+    .filter((i) => equipped.includes(i.id) && isClothingKind(i.kind))
+    .map((i) => i.id)
+    .sort();
+  const { data: clothing } = useQuery({
+    queryKey: ["avatar-clothing", wornIds.join(",")],
+    enabled: wornIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clothing_templates")
+        .select("item_id, template_data_url, item:items(kind)")
+        .in("item_id", wornIds);
+      return (data ?? []).map((r) => ({
+        itemId: r.item_id,
+        kind: (r.item as unknown as { kind: string } | null)?.kind,
+        template: r.template_data_url,
+      })) as WornClothing[];
+    },
+  });
+  const visibleClothing = (clothing ?? []).filter((c) => wornIds.includes(c.itemId));
+
   const list = (owned ?? []).filter((i) => kind === "all" || i.kind === kind);
 
-  const toggle = (id: string) =>
-    setEquipped((e) => (e.includes(id) ? e.filter((x) => x !== id) : e.length >= 12 ? e : [...e, id]));
+  const toggle = (id: string) => {
+    const it = owned?.find((i) => i.id === id);
+    setEquipped((e) => {
+      if (e.includes(id)) return e.filter((x) => x !== id);
+      // only one shirt / pants / t-shirt at a time
+      const rest = it && isClothingKind(it.kind)
+        ? e.filter((x) => owned?.find((o) => o.id === x)?.kind !== it.kind)
+        : e;
+      return rest.length >= 12 ? rest : [...rest, id];
+    });
+  };
 
   const pickColor = (c: string) =>
     setColors((prev) =>
@@ -179,7 +210,7 @@ function AvatarPage() {
                 </div>
               }
             >
-              <Avatar3D colors={colors} accessories={visibleAcc} />
+              <Avatar3D colors={colors} accessories={visibleAcc} clothing={visibleClothing} />
             </Suspense>
           </div>
 
@@ -199,7 +230,7 @@ function AvatarPage() {
             {tab === "accessories" ? (
               <>
                 <div className="mb-3 flex flex-wrap gap-1">
-                  {["all", ...ITEM_KINDS].map((k) => (
+                  {["all", ...ITEM_KINDS, ...CLOTHING_KINDS].map((k) => (
                     <button
                       key={k}
                       onClick={() => setKind(k)}
@@ -234,7 +265,7 @@ function AvatarPage() {
                               Equipped
                             </span>
                           )}
-                          {!i.has3d && (
+                          {!i.has3d && !isClothingKind(i.kind) && (
                             <span className="absolute right-1 top-1 rounded bg-card px-1 text-[10px] text-muted-foreground">
                               No 3D
                             </span>
