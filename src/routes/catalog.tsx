@@ -4,7 +4,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { ItemCard } from "@/components/ItemCard";
-import { ITEM_KINDS, type Item } from "@/lib/format";
+import { ITEM_KINDS, kindLabel, type Item } from "@/lib/format";
+import { CLOTHING_KINDS } from "@/lib/clothing";
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({
@@ -29,6 +30,7 @@ const FILTERS = [
   { key: "normal", label: "On Sale" },
   { key: "limited", label: "Limited" },
   { key: "limitedu", label: "Limited U" },
+  { key: "clothing", label: "Clothing" },
 ] as const;
 
 function CatalogPage() {
@@ -39,10 +41,20 @@ function CatalogPage() {
     queryKey: ["catalog", cls, kind],
     queryFn: async () => {
       let q = supabase.from("items").select("*").order("created_at", { ascending: false });
-      if (cls !== "all") q = q.eq("class", cls as "normal");
+      if (cls === "clothing") q = q.in("kind", [...CLOTHING_KINDS]);
+      else {
+        q = q.not("kind", "in", `(${CLOTHING_KINDS.join(",")})`);
+        if (cls !== "all") q = q.eq("class", cls as "normal");
+      }
       if (kind !== "all") q = q.eq("kind", kind as "hat");
       const { data } = await q;
-      return (data ?? []) as Item[];
+      const list = (data ?? []) as Item[];
+      const ids = [...new Set(list.map((i) => i.creator_id).filter(Boolean))] as string[];
+      const { data: profs } = ids.length
+        ? await supabase.from("profiles").select("id, username").in("id", ids)
+        : { data: [] };
+      const names = new Map((profs ?? []).map((p) => [p.id, p.username]));
+      return list.map((i) => ({ item: i, creator: i.creator_id ? names.get(i.creator_id) ?? "Unknown" : null }));
     },
   });
 
@@ -54,7 +66,10 @@ function CatalogPage() {
           {FILTERS.map((f) => (
             <button
               key={f.key}
-              onClick={() => setCls(f.key)}
+              onClick={() => {
+                setCls(f.key);
+                setKind("all");
+              }}
               className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${
                 cls === f.key
                   ? "border-primary bg-primary text-primary-foreground"
@@ -70,9 +85,9 @@ function CatalogPage() {
             className="ml-auto h-9 rounded-md border border-input bg-card px-2 text-sm capitalize outline-none"
           >
             <option value="all">All types</option>
-            {ITEM_KINDS.map((k) => (
+            {(cls === "clothing" ? CLOTHING_KINDS : ITEM_KINDS).map((k) => (
               <option key={k} value={k} className="capitalize">
-                {k}
+                {kindLabel(k)}
               </option>
             ))}
           </select>
@@ -82,8 +97,8 @@ function CatalogPage() {
           <p className="py-8 text-center text-sm text-muted-foreground">Loading...</p>
         ) : items && items.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {items.map((i) => (
-              <ItemCard key={i.id} item={i} />
+            {items.map(({ item: i, creator }) => (
+              <ItemCard key={i.id} item={i} creator={creator} />
             ))}
           </div>
         ) : (
