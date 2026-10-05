@@ -115,10 +115,10 @@ function makeRoundedPartGeometry(size: [number, number, number], radius: number,
   const g = new RoundedBoxGeometry(w, h, d, smoothness, radius);
   const pos = g.attributes.position;
   const uv = g.attributes.uv;
-  const index = g.index!;
+  const index = g.index; // RoundedBoxGeometry is non-indexed, so this is usually null
   for (const grp of g.groups) {
     for (let i = grp.start; i < grp.start + grp.count; i++) {
-      const v = index.getX(i);
+      const v = index ? index.getX(i) : i;
       const x = pos.getX(v);
       const y = pos.getY(v);
       const z = pos.getZ(v);
