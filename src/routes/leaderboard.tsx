@@ -27,18 +27,56 @@ export const Route = createFileRoute("/leaderboard")({
 
 type Row = { id: string; username: string; rap: number; value: number; items: number };
 
+// ⬇️ paste fetchAllOwned here
+async function fetchAllOwned() {
+  const pageSize = 1000;
+  const all: { user_id: string; items: { rap: number; value: number } | null }[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("user_items")
+      .select("user_id, items(rap, value)")
+      .order("id") // use any unique column so pages don't overlap
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    all.push(...((data ?? []) as unknown as typeof all));
+    if (!data || data.length < pageSize) break;
+  }
+  return all;
+}
+
 function LeaderboardPage() {
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const [{ data: profiles }, { data: owned }] = await Promise.all([
+      const [{ data: profiles }, owned] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, username")
           .eq("is_banned", false)
           .eq("inventory_private", false)
           .limit(1000),
+        fetchAllOwned(),
+    ]);
+    const totals = new Map<string, { rap: number; value: number; items: number }>();
+    for (const row of owned) {
+      const item = row.items;
+      const rap = item?.rap ?? 0;
+      const value = item?.value ?? 0;
+      const cur = totals.get(row.user_id) ?? { rap: 0, value: 0, items: 0 };
+      totals.set(row.user_id, { rap: cur.rap + rap, value: cur.value + value, items: cur.items + 1 });
+    }
+    const list = (profiles ?? []).map((p) => ({
+      id: p.id,
+      username: p.username,
+      rap: totals.get(p.id)?.rap ?? 0,
+      value: totals.get(p.id)?.value ?? 0,
+      items: totals.get(p.id)?.items ?? 0,
+    }));
+    list.sort((a, b) => b.value - a.value || b.rap - a.rap || a.username.localeCompare(b.username));
+    setRows(list);
+  })();
+}, []);
 
         supabase.from("user_items").select("user_id, items(rap, value)").limit(20000),
       ]);
