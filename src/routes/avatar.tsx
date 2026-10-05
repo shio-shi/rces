@@ -132,6 +132,14 @@ function AvatarPage() {
     );
   }, [accessories, equipped, owned]);
 
+  // A worn "face" item with a texture but no 3D mesh is a flat face image that
+  // replaces the default face on the head.
+  const faceUrl = useMemo(
+    () =>
+      visibleAcc.find((a) => a.kind === "face" && !a.mesh_b64 && a.texture_data_url)?.texture_data_url ?? null,
+    [visibleAcc],
+  );
+
   const wornIds = (owned ?? [])
     .filter((i) => equipped.includes(i.id) && isClothingKind(i.kind))
     .map((i) => i.id)
@@ -159,8 +167,9 @@ function AvatarPage() {
     const it = owned?.find((i) => i.id === id);
     setEquipped((e) => {
       if (e.includes(id)) return e.filter((x) => x !== id);
-      // only one shirt / pants / t-shirt at a time
-      const rest = it && isClothingKind(it.kind)
+      // only one shirt / pants / t-shirt / face at a time
+      const exclusive = it && (isClothingKind(it.kind) || it.kind === "face");
+      const rest = exclusive
         ? e.filter((x) => owned?.find((o) => o.id === x)?.kind !== it.kind)
         : e;
       return rest.length >= 12 ? rest : [...rest, id];
@@ -210,7 +219,12 @@ function AvatarPage() {
                 </div>
               }
             >
-              <Avatar3D colors={colors} accessories={visibleAcc} clothing={visibleClothing} />
+              <Avatar3D
+                colors={colors}
+                accessories={visibleAcc}
+                clothing={visibleClothing}
+                faceUrl={faceUrl}
+              />
             </Suspense>
           </div>
 
