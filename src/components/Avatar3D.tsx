@@ -227,6 +227,8 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
 
   const matrix = useMemo(() => {
     const meta = acc.meta;
+    // Rows without real 3D positioning data (e.g. flat face images) must not crash the scene
+    if (!meta || !meta.attachmentPos) return new THREE.Matrix4();
     const name =
       meta.attachmentName && ATTACH[meta.attachmentName]
         ? meta.attachmentName
@@ -328,9 +330,11 @@ function Character({
       <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
       <Part size={[0.98, 2, 1]} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
       <Part size={[0.98, 2, 1]} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
-      {accessories.map((a) => (
-        <Accessory key={a.itemId} acc={a} />
-      ))}
+      {accessories
+        .filter((a) => a.mesh_b64 && a.meta?.attachmentPos)
+        .map((a) => (
+          <Accessory key={a.itemId} acc={a} />
+        ))}
     </group>
   );
 }
