@@ -198,12 +198,13 @@ function templateLayersFor(part: BodyPart, layers: Layer[]) {
 
 const NO_LAYERS: Layer[] = [];
 
-// Neck stub of a custom torso mesh: triangles in the top part of the mesh (above NECK_Y) that
-// are also near its centre (within NECK_X of the middle) stay skin-coloured instead of getting
-// the shirt. Positions are fractions of the mesh size, from -0.5 (bottom/left) to 0.5 (top/right).
-// Raise NECK_Y if the shirt is missing on the upper chest; lower it if a shirt-coloured line remains.
-const NECK_Y = 0.3;
-const NECK_X = 0.22;
+// Neck stub of a custom torso mesh: the mesh is measured slice by slice from the top. Slices
+// that are narrower than NECK_WIDE (as a fraction of the mesh width, 1 = full width) at the very
+// top are the neck and stay skin-coloured instead of getting the shirt. A torso with no neck
+// piece has a wide top, so nothing is treated as neck.
+// Raise NECK_WIDE if a shirt-coloured line remains; lower it if part of the shoulders or back
+// turns skin-coloured.
+const NECK_WIDE = 0.7;
 // Size (in template pixels) of the reserved skin-colour patch in the top-left corner of the atlas
 const SKIN_PATCH = 12;
 
@@ -223,6 +224,27 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
   const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
   const p = new THREE.Vector3();
 
+  // Torso only: find the height (-0.5..0.5) above which the mesh is a narrow neck stub.
+  // Stays at 0.5 (nothing counts as neck) when the top of the mesh is already wide.
+  let neckY = 0.5;
+  if (part === "torso") {
+    const BINS = 24;
+    const widest = new Array<number>(BINS).fill(0);
+    for (let v = 0; v < pos.count; v++) {
+      p.fromBufferAttribute(pos, v);
+      const py = (p.y - ctr.y) / (size.y || 1);
+      const px = Math.abs((p.x - ctr.x) / (size.x || 1));
+      const b = Math.min(BINS - 1, Math.max(0, Math.floor((py + 0.5) * BINS)));
+      if (px > widest[b]!) widest[b] = px;
+    }
+    for (let b = BINS - 1; b >= 0; b--) {
+      if (widest[b]! * 2 >= NECK_WIDE) {
+        neckY = (b + 1) / BINS - 0.5;
+        break;
+      }
+    }
+  }
+
   for (let i = 0; i + 2 < pos.count; i += 3) {
     // Average of the three vertex normals decides which template face this triangle uses
     const nx = nor.getX(i) + nor.getX(i + 1) + nor.getX(i + 2);
@@ -239,20 +261,14 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
 
     // Is this triangle part of the neck stub? (torso only)
     let neck = false;
-    if (part === "torso") {
-      let sx = 0;
+    if (part === "torso" && neckY < 0.5) {
       let sy = 0;
-      let sz = 0;
       for (let k = 0; k < 3; k++) {
         p.fromBufferAttribute(pos, i + k);
-        sx += p.x;
         sy += p.y;
-        sz += p.z;
       }
-      const cx = (sx / 3 - ctr.x) / (size.x || 1);
       const cy = (sy / 3 - ctr.y) / (size.y || 1);
-      const cz = (sz / 3 - ctr.z) / (size.z || 1);
-      neck = cy > NECK_Y && Math.abs(cx) < NECK_X && Math.abs(cz) < 0.4;
+      neck = cy > neckY;
     }
 
     for (let k = 0; k < 3; k++) {
