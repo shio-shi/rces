@@ -364,6 +364,41 @@ function projectFaceUVs(src: THREE.BufferGeometry) {
   return g;
 }
 
+// Same idea as projectFaceUVs, but for custom head meshes that already have their own UVs
+// (and maybe their own texture). The texture atlas is split in two halves: the left half holds
+// the head's original texture (its UVs are squeezed into u 0..0.5), the right half holds the
+// face on a skin background. Front-facing triangles are pointed at the right half.
+function projectFaceAtlasUVs(src: THREE.BufferGeometry) {
+  const g = src.index ? src.toNonIndexed() : src.clone();
+  g.computeBoundingBox();
+  const ctr = g.boundingBox!.getCenter(new THREE.Vector3());
+  const pos = g.getAttribute("position") as THREE.BufferAttribute;
+  const nor = g.getAttribute("normal") as THREE.BufferAttribute;
+  const oldUv = g.getAttribute("uv") as THREE.BufferAttribute | undefined;
+  const uvs = new Float32Array(pos.count * 2);
+  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+
+  for (let i = 0; i + 2 < pos.count; i += 3) {
+    const nz = (nor.getZ(i) + nor.getZ(i + 1) + nor.getZ(i + 2)) / 3;
+    const front = nz < FACE_NORMAL_Z; // the face looks toward -z
+    for (let k = 0; k < 3; k++) {
+      let u: number;
+      let v: number;
+      if (front) {
+        u = 0.5 + 0.5 * clamp01(0.5 - (pos.getX(i + k) - ctr.x) / FACE_SIZE);
+        v = clamp01(0.5 + (pos.getY(i + k) - ctr.y) / FACE_SIZE);
+      } else {
+        u = (oldUv ? oldUv.getX(i + k) : 0) * 0.5;
+        v = oldUv ? oldUv.getY(i + k) : 0;
+      }
+      uvs[(i + k) * 2] = u;
+      uvs[(i + k) * 2 + 1] = v;
+    }
+  }
+  g.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  return g;
+}
+
 function FacedHead({
   geometry,
   color,
@@ -549,12 +584,14 @@ function BodyMesh({
   color,
   part,
   layers = NO_LAYERS,
+  face = null,
 }: {
   acc: LoadedAccessory;
   position: [number, number, number];
   color: string;
   part?: BodyPart; // omit for the head (classic clothing doesn't cover it)
   layers?: Layer[];
+  face?: THREE.Texture | null; // head only: painted directly onto the mesh
 }) {
   const geometry = useMemo(() => {
     try {
@@ -636,7 +673,46 @@ function BodyMesh({
     };
   }, [acc.texture_data_url]);
 
+  // Head only: paint the face directly onto the custom head mesh
+  const faceGeo = useMemo(
+    () => (!part && face && geometry ? projectFaceAtlasUVs(geometry) : null),
+    [part, face, geometry],
+  );
+  useEffect(() => () => faceGeo?.dispose(), [faceGeo]);
+
+  const faceTex = useMemo(() => {
+    if (!faceGeo || !face?.image) return null;
+    // Wait for the head's own texture (if it has one) so it isn't lost from the atlas
+    if (acc.texture_data_url && !texture) return null;
+    const W = 2048;
+    const H = 1024;
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext("2d")!;
+    ctx.imageSmoothingEnabled = true;
+    // Left half: the head's original texture (or plain skin colour)
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, W / 2, H);
+    if (texture?.image) ctx.drawImage(texture.image as CanvasImageSource, 0, 0, W / 2, H);
+    // Right half: the face on a skin background
+    ctx.fillStyle = color;
+    ctx.fillRect(W / 2, 0, W / 2, H);
+    ctx.drawImage(face.image as CanvasImageSource, W / 2, 0, W / 2, H);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, [faceGeo, face, texture, color, acc.texture_data_url]);
+  useEffect(() => () => faceTex?.dispose(), [faceTex]);
+
   if (!geometry) return null;
+
+  if (faceGeo && faceTex)
+    return (
+      <mesh key="faced" geometry={faceGeo} position={position} castShadow>
+        <meshStandardMaterial key={faceTex.uuid} map={faceTex} color="#ffffff" roughness={0.55} />
+      </mesh>
+    );
 
   if (worn && clothedGeo && clothTex)
     return (
@@ -694,7 +770,7 @@ function Character({
   return (
     <group>
       {body.head ? (
-        <BodyMesh acc={body.head} position={[0, 4.53, 0]} color={colors.head} />
+        <BodyMesh acc={body.head} position={[0, 4.53, 0]} color={colors.head} face={face} />
       ) : headGeo ? (
         // Face is painted directly onto the head mesh (no floating plane)
         <FacedHead geometry={headGeo} color={colors.head} face={face} />
@@ -703,9 +779,8 @@ function Character({
           <meshStandardMaterial color={colors.head} roughness={0.55} />
         </RoundedBox>
       )}
-      {/* Floating plane is only a fallback for when the face can't be painted on the head
-          (custom head meshes, or while the default head mesh is still loading) */}
-      {face && (body.head || !headGeo) && (
+      {/* Floating plane is only a fallback while the default head mesh is still loading */}
+      {face && !body.head && !headGeo && (
         <mesh position={[0, 4.53, -0.601]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[1.1, 1.1]} />
           <meshStandardMaterial map={face} transparent roughness={0.55} />
