@@ -23,7 +23,7 @@ const ROTATE_Y_180 = true;
 // Re-upload the hair after changing these.
 const OFFSET_X = 0;
 const OFFSET_Y = 0;
-const OFFSET_Z = 0.3;
+const OFFSET_Z = 0.5;
 
 let loader: DRACOLoader | null = null;
 function getLoader() {
