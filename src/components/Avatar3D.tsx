@@ -673,7 +673,7 @@ export function Avatar3D({
   const controls = useRef<OrbitControlsImpl>(null);
   return (
     <div className="relative h-full w-full">
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [-3, 4.5, -9], fov: 40 }}>
+      <Canvas shadows dpr={[1, 1.5]} frameloop="demand" camera={{ position: [-3, 4.5, -9], fov: 40 }}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[-5, 10, -6]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
         <Suspense fallback={null}>
