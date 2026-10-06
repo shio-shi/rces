@@ -372,8 +372,8 @@ function Character({
   const layers = useLayers(clothing);
   const face = useFaceTexture(faceUrl);
   const headGeo = useHeadMesh();
-  const body: Partial<Record<string, LoadedAccessory>> = {};
-  for (const a of accessories) if (a.meta?.bodyPart && a.mesh_b64) body[a.kind] = a;
+  const body: { head?: LoadedAccessory; torso?: LoadedAccessory; arm?: LoadedAccessory; leg?: LoadedAccessory } = {};
+  for (const a of accessories) if (a.meta?.bodyPart && a.mesh_b64) body[a.kind as "head"] = a;
   return (
     <group>
       {body.head ? (
