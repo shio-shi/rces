@@ -10,6 +10,7 @@ import {
   adminEditItem,
   adminSetAccessory,
   adminSetFace,
+  adminSetBodyPart,
   adminRemoveAccessory,
   adminFindUser,
   adminGetInventory,
@@ -685,7 +686,7 @@ function AdminPage() {
                   {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
                 </span>
                 <EditEditor item={i} onSaved={reloadItems} />
-                <AccessoryEditor item={i} />
+                {BODY_KINDS.includes(i.kind) ? <BodyPartEditor item={i} /> : <AccessoryEditor item={i} />}
                 {i.kind === "face" && <FaceEditor item={i} />}
                 <ValueEditor item={i} onSaved={reloadItems} />
                 {i.class !== "normal" && <RestockEditor item={i} onSaved={reloadItems} />}
@@ -963,6 +964,70 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
     </div>
   );
 }
+function BodyPartEditor({ item }: { item: AdminItem }) {
+  const setBody = useServerFn(adminSetBodyPart);
+  const removeAcc = useServerFn(adminRemoveAccessory);
+  const [open, setOpen] = useState(false);
+  const [mesh, setMesh] = useState<File | null>(null);
+  const [tex, setTex] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!open)
+    return (
+      <button onClick={() => setOpen(true)} className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface">
+        Body mesh
+      </button>
+    );
+  const upload = async () => {
+    if (!mesh) return toast.error("Choose a .mesh file first.");
+    setBusy(true);
+    try {
+      const { parseRobloxMesh, bytesToBase64 } = await import("@/lib/robloxMesh");
+      const bytes = new Uint8Array(await mesh.arrayBuffer());
+      try {
+        parseRobloxMesh(bytes);
+      } catch {
+        throw new Error("That file isn't a readable Roblox .mesh file.");
+      }
+      let textureDataUrl: string | null = null;
+      if (tex)
+        textureDataUrl = await new Promise<string>((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.onerror = rej;
+          r.readAsDataURL(tex);
+        });
+      await setBody({ data: { itemId: item.id, meshB64: bytesToBase64(bytes), textureDataUrl } });
+      toast.success("Body part mesh attached.");
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+    return;
+  };
+  const field = "text-xs file:mr-2 file:rounded file:border file:border-border file:bg-card file:px-2 file:py-0.5";
+  return (
+    <div className="flex w-full flex-col gap-2 rounded-md border border-border p-2 text-xs">
+      <label>Body part ({item.kind}) mesh (.mesh) <input type="file" accept=".mesh" className={field} onChange={(e) => setMesh(e.target.files?.[0] ?? null)} /></label>
+      <label>Texture (image, optional — otherwise uses skin colour) <input type="file" accept="image/*" className={field} onChange={(e) => setTex(e.target.files?.[0] ?? null)} /></label>
+      <div className="flex gap-2">
+        <button disabled={busy} onClick={upload} className="rounded-md bg-primary px-3 py-1 font-bold text-primary-foreground disabled:opacity-50">{busy ? "Uploading..." : "Upload"}</button>
+        <button
+          onClick={async () => {
+            await removeAcc({ data: { itemId: item.id } });
+            toast.success("Body mesh removed.");
+          }}
+          className="rounded-md border border-border px-3 py-1 font-bold"
+        >
+          Remove mesh
+        </button>
+        <button onClick={() => setOpen(false)} className="rounded-md border border-border px-3 py-1 font-bold">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 function FaceEditor({ item }: { item: AdminItem }) {
   const setFace = useServerFn(adminSetFace);
   const removeAcc = useServerFn(adminRemoveAccessory);
