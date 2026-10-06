@@ -68,6 +68,15 @@ const KIND_DEFAULT: Record<string, string> = {
   gear: "RightGripAttachment",
 };
 
+// Where the right hand ends up when the arm is raised forward to hold a gear/tool:
+// shoulder is at (1.5, 4, 0), the arm points toward -z (front) and is 2 studs long.
+const HELD_GRIP: [number, number, number] = [1.5, 4, -2];
+
+function attachmentNameFor(acc: LoadedAccessory) {
+  const n = acc.meta?.attachmentName;
+  return n && ATTACH[n] ? n : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
+}
+
 function useFaceTexture(customUrl?: string | null) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
   useEffect(() => {
@@ -528,11 +537,9 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     const meta = acc.meta;
     // Rows without real 3D positioning data (e.g. flat face images) must not crash the scene
     if (!meta || !meta.attachmentPos) return new THREE.Matrix4();
-    const name =
-      meta.attachmentName && ATTACH[meta.attachmentName]
-        ? meta.attachmentName
-        : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
-    const charPos = ATTACH[name] ?? [0, 5.1, 0];
+    const name = attachmentNameFor(acc);
+    // Held items follow the raised right hand instead of the arm hanging at the side
+    const charPos = name === "RightGripAttachment" ? HELD_GRIP : ATTACH[name] ?? [0, 5.1, 0];
     const charM = new THREE.Matrix4().makeTranslation(...charPos);
     if (name === "RightGripAttachment") charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
     const r = (meta.attachmentRot?.length === 9 ? meta.attachmentRot : [1, 0, 0, 0, 1, 0, 0, 0, 1]) as [number, number, number, number, number, number, number, number, number];
@@ -767,8 +774,13 @@ function Character({
   const headGeo = useHeadMesh();
   const body: { head?: LoadedAccessory; torso?: LoadedAccessory; arm?: LoadedAccessory; leg?: LoadedAccessory } = {};
   for (const a of accessories) if (a.meta?.bodyPart && a.mesh_b64) body[a.kind as "head"] = a;
+  // Holding a gear/tool: the right arm is raised straight forward, like in Roblox
+  const holdingTool = accessories.some(
+    (a) =>
+      a.mesh_b64 && a.meta?.attachmentPos && !a.meta?.bodyPart && attachmentNameFor(a) === "RightGripAttachment",
+  );
   return (
-    <group>
+    <group name="avatar">
       {body.head ? (
         <BodyMesh acc={body.head} position={[0, 4.53, 0]} color={colors.head} face={face} />
       ) : headGeo ? (
@@ -794,12 +806,16 @@ function Character({
       {body.arm ? (
         <>
           <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
-          <BodyMesh acc={body.arm} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
+          <group position={[1.5, 4, 0]} rotation={[holdingTool ? Math.PI / 2 : 0, 0, 0]}>
+            <BodyMesh acc={body.arm} position={[0, -1, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
+          </group>
         </>
       ) : (
         <>
           <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
-          <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
+          <group position={[1.5, 4, 0]} rotation={[holdingTool ? Math.PI / 2 : 0, 0, 0]}>
+            <Part size={[1, 2, 1]} position={[0, -1, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
+          </group>
         </>
       )}
       {body.leg ? (
@@ -828,7 +844,6 @@ function Character({
 const SNAP_YAW = 22; // degrees around the character; raise for a more side-on view, negative to tilt the other way
 const SNAP_PITCH = 6; // degrees above eye level
 const SNAP_FOV = 30;
-const SNAP_TARGET = new THREE.Vector3(0, 2.7, 0);
 const SNAP_SETTLE_MS = 300; // wait this long after the last scene update before capturing
 
 function Snapshotter({ onCapture }: { onCapture: (url: string) => void }) {
@@ -838,24 +853,46 @@ function Snapshotter({ onCapture }: { onCapture: (url: string) => void }) {
 
   const capture = useCallback(() => {
     const aspect = size.width / size.height;
-    // Distance that fits the whole avatar for both tall and narrow canvases
     const t = Math.tan(THREE.MathUtils.degToRad(SNAP_FOV) / 2);
-    const dist = Math.max(3.4 / t, 3.2 / (t * aspect)) * 1.05;
     const yaw = THREE.MathUtils.degToRad(SNAP_YAW);
     const pitch = THREE.MathUtils.degToRad(SNAP_PITCH);
-    cam.aspect = aspect;
-    cam.position.set(
-      SNAP_TARGET.x - Math.sin(yaw) * Math.cos(pitch) * dist,
-      SNAP_TARGET.y + Math.sin(pitch) * dist,
-      SNAP_TARGET.z - Math.cos(yaw) * Math.cos(pitch) * dist,
-    );
-    cam.lookAt(SNAP_TARGET);
-    cam.updateProjectionMatrix();
-    cam.updateMatrixWorld();
 
     const ground = scene.getObjectByName("ground");
     const wasVisible = ground?.visible ?? true;
     if (ground) ground.visible = false; // Roblox thumbnails have no floor shadow
+
+    // Frame whatever the avatar currently looks like (a held sword makes it taller and deeper)
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    const avatar = scene.getObjectByName("avatar");
+    if (avatar) box.setFromObject(avatar);
+    if (box.isEmpty()) box.set(new THREE.Vector3(-2.5, 0, -1), new THREE.Vector3(2.5, 5.2, 1));
+    const center = box.getCenter(new THREE.Vector3());
+    const dir = new THREE.Vector3(
+      -Math.sin(yaw) * Math.cos(pitch),
+      Math.sin(pitch),
+      -Math.cos(yaw) * Math.cos(pitch),
+    );
+    const place = (d: number) => {
+      cam.position.copy(center).addScaledVector(dir, d);
+      cam.lookAt(center);
+      cam.updateMatrixWorld();
+    };
+    cam.aspect = aspect;
+    cam.updateProjectionMatrix();
+    const D0 = 30;
+    place(D0);
+    // Moving the camera back only increases depth, so the distance that fits every
+    // corner of the box is D0 + the largest shortfall.
+    let extra = -Infinity;
+    const v = new THREE.Vector3();
+    for (const x of [box.min.x, box.max.x])
+      for (const y of [box.min.y, box.max.y])
+        for (const z of [box.min.z, box.max.z]) {
+          v.set(x, y, z).applyMatrix4(cam.matrixWorldInverse);
+          extra = Math.max(extra, Math.max(Math.abs(v.x) / (t * aspect), Math.abs(v.y) / t) - -v.z);
+        }
+    place(Math.max(4, (D0 + extra) * 1.06));
 
     gl.render(scene, cam);
     // toDataURL must run in the same tick as the render (no preserveDrawingBuffer needed)
