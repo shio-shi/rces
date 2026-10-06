@@ -82,6 +82,14 @@ const HELD_GRIP: [number, number, number] = [1.5, 3.5, -1.5];
 // +y slides the item up through the hand (use it if the hand is on the blade), -y slides it down.
 const GRIP_NUDGE: [number, number, number] = [0, 1.2, 0];
 
+// Tilt of held items, in degrees, rotating the item around the hand (world axes: x = character's
+// left/right, y = up, z = front/back; the character faces -z).
+// z: negative leans the tip outward (away from the body), positive leans it toward the body.
+// x: negative leans the tip forward (away from the character's chest), positive leans it backward.
+// y: spins the item around its own vertical axis.
+// Tune these until it matches the Roblox pose.
+const GRIP_TILT_DEG: [number, number, number] = [0, 0, -15];
+
 function attachmentNameFor(acc: LoadedAccessory) {
   const n = acc.meta?.attachmentName;
   return n && ATTACH[n] ? n : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
@@ -554,7 +562,18 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
       ? [HELD_GRIP[0] + GRIP_NUDGE[0], HELD_GRIP[1] + GRIP_NUDGE[1], HELD_GRIP[2] + GRIP_NUDGE[2]]
       : ATTACH[name] ?? [0, 5.1, 0];
     const charM = new THREE.Matrix4().makeTranslation(...charPos);
-    if (held) charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+    if (held) {
+      // Tilt around the hand first (world axes), then apply the base grip rotation
+      const tilt = new THREE.Matrix4().makeRotationFromEuler(
+        new THREE.Euler(
+          THREE.MathUtils.degToRad(GRIP_TILT_DEG[0]),
+          THREE.MathUtils.degToRad(GRIP_TILT_DEG[1]),
+          THREE.MathUtils.degToRad(GRIP_TILT_DEG[2]),
+        ),
+      );
+      charM.multiply(tilt);
+      charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+    }
     const r = (meta.attachmentRot?.length === 9 ? meta.attachmentRot : [1, 0, 0, 0, 1, 0, 0, 0, 1]) as [number, number, number, number, number, number, number, number, number];
     const accM = new THREE.Matrix4().set(
       r[0], r[1], r[2], meta.attachmentPos[0],
