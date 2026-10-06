@@ -204,7 +204,7 @@ const NO_LAYERS: Layer[] = [];
 // piece has a wide top, so nothing is treated as neck.
 // Raise NECK_WIDE if a shirt-coloured line remains; lower it if part of the shoulders or back
 // turns skin-coloured.
-const NECK_WIDE = 0.7;
+const NECK_WIDE = 0.55;
 // Size (in template pixels) of the reserved skin-colour patch in the top-left corner of the atlas
 const SKIN_PATCH = 12;
 
@@ -228,7 +228,7 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
   // Stays at 0.5 (nothing counts as neck) when the top of the mesh is already wide.
   let neckY = 0.5;
   if (part === "torso") {
-    const BINS = 24;
+    const BINS = 48;
     const widest = new Array<number>(BINS).fill(0);
     for (let v = 0; v < pos.count; v++) {
       p.fromBufferAttribute(pos, v);
