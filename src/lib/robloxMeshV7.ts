@@ -11,6 +11,11 @@ import {
 // down on v7 hair but not on older accessories, flip this to true.
 const FLIP_V = false;
 
+// v7 meshes came out facing backwards. This turns the mesh 180 degrees around the
+// vertical axis, around the mesh's own center (so it stays in place on the head).
+// Set to false to disable.
+const ROTATE_Y_180 = true;
+
 let loader: DRACOLoader | null = null;
 function getLoader() {
   if (!loader) {
@@ -74,11 +79,19 @@ async function parseV7(bytes: Uint8Array): Promise<MeshData> {
     if (n) normals.set(n.array as ArrayLike<number>);
   }
 
-  const ROTATE_Y_180 = true; // hair faces backwards
   if (ROTATE_Y_180) {
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     for (let i = 0; i < positions.length; i += 3) {
-      positions[i] = -positions[i];         // x
-      positions[i + 2] = -positions[i + 2]; // z
+      minX = Math.min(minX, positions[i]);
+      maxX = Math.max(maxX, positions[i]);
+      minZ = Math.min(minZ, positions[i + 2]);
+      maxZ = Math.max(maxZ, positions[i + 2]);
+    }
+    const cx = (minX + maxX) / 2;
+    const cz = (minZ + maxZ) / 2;
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i] = 2 * cx - positions[i]; // x, mirrored around the mesh's center
+      positions[i + 2] = 2 * cz - positions[i + 2]; // z, mirrored around the mesh's center
       normals[i] = -normals[i];
       normals[i + 2] = -normals[i + 2];
     }
@@ -87,6 +100,7 @@ async function parseV7(bytes: Uint8Array): Promise<MeshData> {
   geo.dispose();
   return { positions, normals, uvs, indices };
 }
+
 /**
  * Call this on the raw mesh bytes at upload time, before storing them.
  * v7 meshes are decoded and re-encoded as a v2 mesh; every other version is
