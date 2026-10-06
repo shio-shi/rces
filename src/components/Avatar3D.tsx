@@ -321,6 +321,93 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
   return g;
 }
 
+// ---- Face painted directly onto the head mesh ----
+
+// Size (in world studs) the face image covers on the front of the head.
+// Matches the old 1.1 x 1.1 plane. Change this if the face looks too big or small.
+const FACE_SIZE = 1.1;
+// Size (in canvas pixels) of the reserved skin-colour patch in the face texture's corner
+const FACE_SKIN_PATCH = 16;
+// Triangles whose averaged normal points toward -z by more than this get the face.
+// Closer to -1 = face covers less of the curve; closer to 0 = wraps further around.
+const FACE_NORMAL_Z = -0.35;
+
+// Gives the head mesh UVs so the face image is projected flat onto its front.
+// Front-facing triangles get the projected UVs; everything else points at a
+// skin-coloured patch in the texture's bottom-left corner.
+function projectFaceUVs(src: THREE.BufferGeometry) {
+  const g = src.index ? src.toNonIndexed() : src.clone();
+  g.computeBoundingBox();
+  const ctr = g.boundingBox!.getCenter(new THREE.Vector3());
+  const pos = g.getAttribute("position") as THREE.BufferAttribute;
+  const nor = g.getAttribute("normal") as THREE.BufferAttribute;
+  const uvs = new Float32Array(pos.count * 2);
+  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+  const patch = FACE_SKIN_PATCH / 2 / 512; // centre of the skin patch, in UV space
+
+  for (let i = 0; i + 2 < pos.count; i += 3) {
+    const nz = (nor.getZ(i) + nor.getZ(i + 1) + nor.getZ(i + 2)) / 3;
+    const front = nz < FACE_NORMAL_Z; // the face looks toward -z
+    for (let k = 0; k < 3; k++) {
+      let u = patch;
+      let v = patch;
+      if (front) {
+        // Viewed from the front (-z), screen-right is -x, so u grows as x shrinks
+        u = clamp01(0.5 - (pos.getX(i + k) - ctr.x) / FACE_SIZE);
+        v = clamp01(0.5 + (pos.getY(i + k) - ctr.y) / FACE_SIZE);
+      }
+      uvs[(i + k) * 2] = u;
+      uvs[(i + k) * 2 + 1] = v;
+    }
+  }
+  g.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  return g;
+}
+
+function FacedHead({
+  geometry,
+  color,
+  face,
+}: {
+  geometry: THREE.BufferGeometry;
+  color: string;
+  face: THREE.Texture | null;
+}) {
+  const faceGeo = useMemo(() => projectFaceUVs(geometry), [geometry]);
+  useEffect(() => () => faceGeo.dispose(), [faceGeo]);
+
+  const tex = useMemo(() => {
+    if (!face?.image) return null;
+    const S = 512;
+    const c = document.createElement("canvas");
+    c.width = c.height = S;
+    const ctx = c.getContext("2d")!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, S, S);
+    ctx.drawImage(face.image as CanvasImageSource, 0, 0, S, S);
+    // Guaranteed plain skin patch in the bottom-left corner (UV 0,0 with flipY) for
+    // every triangle that isn't on the front of the face
+    ctx.fillStyle = color;
+    ctx.fillRect(0, S - FACE_SKIN_PATCH, FACE_SKIN_PATCH, FACE_SKIN_PATCH);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, [face, color]);
+  useEffect(() => () => tex?.dispose(), [tex]);
+
+  return (
+    <mesh geometry={faceGeo} position={[0, 4.53, 0]} castShadow>
+      <meshStandardMaterial
+        key={tex ? tex.uuid : "none"}
+        map={tex}
+        color={tex ? "#ffffff" : color}
+        roughness={0.55}
+      />
+    </mesh>
+  );
+}
+
 function Part({
   size,
   position,
@@ -609,15 +696,16 @@ function Character({
       {body.head ? (
         <BodyMesh acc={body.head} position={[0, 4.53, 0]} color={colors.head} />
       ) : headGeo ? (
-        <mesh geometry={headGeo} position={[0, 4.53, 0]} castShadow>
-          <meshStandardMaterial color={colors.head} roughness={0.55} />
-        </mesh>
+        // Face is painted directly onto the head mesh (no floating plane)
+        <FacedHead geometry={headGeo} color={colors.head} face={face} />
       ) : (
         <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.4} smoothness={16} position={[0, 4.53, 0]} castShadow>
           <meshStandardMaterial color={colors.head} roughness={0.55} />
         </RoundedBox>
       )}
-      {face && (
+      {/* Floating plane is only a fallback for when the face can't be painted on the head
+          (custom head meshes, or while the default head mesh is still loading) */}
+      {face && (body.head || !headGeo) && (
         <mesh position={[0, 4.53, -0.601]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[1.1, 1.1]} />
           <meshStandardMaterial map={face} transparent roughness={0.55} />
