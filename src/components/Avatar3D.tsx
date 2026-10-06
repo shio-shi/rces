@@ -117,8 +117,8 @@ function useHeadMesh() {
 function makeRoundedPartGeometry(size: [number, number, number], radius: number, smoothness: number) {
   const [w, h, d] = size;
   const g = new RoundedBoxGeometry(w, h, d, smoothness, radius);
-  const pos = g.attributes.position;
-  const uv = g.attributes.uv;
+  const pos = g.getAttribute("position") as THREE.BufferAttribute;
+  const uv = g.getAttribute("uv") as THREE.BufferAttribute;
   const index = g.index; // RoundedBoxGeometry is non-indexed, so this is usually null
   for (const grp of g.groups) {
     for (let i = grp.start; i < grp.start + grp.count; i++) {
