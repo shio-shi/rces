@@ -308,9 +308,13 @@ function Character({
   const layers = useLayers(clothing);
   const face = useFaceTexture(faceUrl);
   const headGeo = useHeadMesh();
+  const body: Partial<Record<string, LoadedAccessory>> = {};
+  for (const a of accessories) if (a.meta?.bodyPart && a.mesh_b64) body[a.kind] = a;
   return (
     <group>
-      {headGeo ? (
+      {body.head ? (
+        <BodyMesh acc={body.head} position={[0, 4.53, 0]} color={colors.head} />
+      ) : headGeo ? (
         <mesh geometry={headGeo} position={[0, 4.53, 0]} castShadow>
           <meshStandardMaterial color={colors.head} roughness={0.55} />
         </mesh>
@@ -325,13 +329,35 @@ function Character({
           <meshStandardMaterial map={face} transparent roughness={0.55} />
         </mesh>
       )}
-      <Part size={[2, 2, 1]} position={[0, 3, 0]} color={colors.torso} part="torso" layers={layers} />
-      <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
-      <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
-      <Part size={[0.98, 2, 1]} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
-      <Part size={[0.98, 2, 1]} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
+      {body.torso ? (
+        <BodyMesh acc={body.torso} position={[0, 3, 0]} color={colors.torso} />
+      ) : (
+        <Part size={[2, 2, 1]} position={[0, 3, 0]} color={colors.torso} part="torso" layers={layers} />
+      )}
+      {body.arm ? (
+        <>
+          <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} />
+          <BodyMesh acc={body.arm} position={[1.5, 3, 0]} color={colors.right_arm} />
+        </>
+      ) : (
+        <>
+          <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
+          <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
+        </>
+      )}
+      {body.leg ? (
+        <>
+          <BodyMesh acc={body.leg} position={[-0.5, 1, 0]} color={colors.left_leg} />
+          <BodyMesh acc={body.leg} position={[0.5, 1, 0]} color={colors.right_leg} />
+        </>
+      ) : (
+        <>
+          <Part size={[0.98, 2, 1]} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
+          <Part size={[0.98, 2, 1]} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
+        </>
+      )}
       {accessories
-        .filter((a) => a.mesh_b64 && a.meta?.attachmentPos)
+        .filter((a) => a.mesh_b64 && a.meta?.attachmentPos && !a.meta?.bodyPart)
         .map((a) => (
           <Accessory key={a.itemId} acc={a} />
         ))}
