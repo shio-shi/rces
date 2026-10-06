@@ -271,6 +271,18 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
       neck = cy > neckY;
     }
 
+    // Up-facing torso triangles on the back half should copy the back's top edge,
+    // so the front's V-neck notch doesn't show through at the back of the neck.
+    let backHalf = false;
+    if (part === "torso" && face === 2) {
+      let sz = 0;
+      for (let k = 0; k < 3; k++) {
+        p.fromBufferAttribute(pos, i + k);
+        sz += p.z;
+      }
+      backHalf = (sz / 3 - ctr.z) / (size.z || 1) > 0;
+    }
+
     for (let k = 0; k < 3; k++) {
       p.fromBufferAttribute(pos, i + k);
       const px = (p.x - ctr.x) / (size.x || 1);
@@ -289,10 +301,11 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
       let X = r[0] + clamp01(fu) * r[2];
       let Y = r[1] + (1 - clamp01(ft)) * r[3];
       if (part === "torso" && face === 2) {
-        // Shoulders / neck area of a custom torso: continue the front's top edge colours
-        // instead of using the template's separate "top" region, which causes a visible seam.
-        const f = rects[5]!;
-        X = f[0] + clamp01(0.5 - px) * f[2];
+        // Shoulders / neck area of a custom torso: continue the top edge colours of the front
+        // (or back, for the back half) instead of using the template's separate "top" region,
+        // which causes a visible seam.
+        const f = backHalf ? rects[4]! : rects[5]!;
+        X = f[0] + clamp01(backHalf ? 0.5 + px : 0.5 - px) * f[2];
         Y = f[1] + 1.5;
       }
       if (neck) {
