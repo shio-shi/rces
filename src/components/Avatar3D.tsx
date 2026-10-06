@@ -88,7 +88,7 @@ const GRIP_NUDGE: [number, number, number] = [0, 1.2, 0];
 // x: negative leans the tip forward (away from the character's chest), positive leans it backward.
 // y: spins the item around its own vertical axis.
 // Tune these until it matches the Roblox pose.
-const GRIP_TILT_DEG: [number, number, number] = [0, 180, 0];
+const GRIP_TILT_DEG: [number, number, number] = [0, 90, 0];
 
 function attachmentNameFor(acc: LoadedAccessory) {
   const n = acc.meta?.attachmentName;
