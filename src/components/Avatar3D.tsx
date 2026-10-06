@@ -198,6 +198,15 @@ function templateLayersFor(part: BodyPart, layers: Layer[]) {
 
 const NO_LAYERS: Layer[] = [];
 
+// Neck stub of a custom torso mesh: triangles in the top part of the mesh (above NECK_Y) that
+// are also near its centre (within NECK_X of the middle) stay skin-coloured instead of getting
+// the shirt. Positions are fractions of the mesh size, from -0.5 (bottom/left) to 0.5 (top/right).
+// Raise NECK_Y if the shirt is missing on the upper chest; lower it if a shirt-coloured line remains.
+const NECK_Y = 0.3;
+const NECK_X = 0.22;
+// Size (in template pixels) of the reserved skin-colour patch in the top-left corner of the atlas
+const SKIN_PATCH = 12;
+
 // Gives a custom mesh UVs that point into the classic template, the same way the
 // template wraps a plain box: every triangle goes to the front/back/left/right/top/bottom
 // region of the template depending on which way it faces.
@@ -228,6 +237,24 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
     else face = nz >= 0 ? 4 : 5;
     const r = rects[face]!;
 
+    // Is this triangle part of the neck stub? (torso only)
+    let neck = false;
+    if (part === "torso") {
+      let sx = 0;
+      let sy = 0;
+      let sz = 0;
+      for (let k = 0; k < 3; k++) {
+        p.fromBufferAttribute(pos, i + k);
+        sx += p.x;
+        sy += p.y;
+        sz += p.z;
+      }
+      const cx = (sx / 3 - ctr.x) / (size.x || 1);
+      const cy = (sy / 3 - ctr.y) / (size.y || 1);
+      const cz = (sz / 3 - ctr.z) / (size.z || 1);
+      neck = cy > NECK_Y && Math.abs(cx) < NECK_X && Math.abs(cz) < 0.4;
+    }
+
     for (let k = 0; k < 3; k++) {
       p.fromBufferAttribute(pos, i + k);
       const px = (p.x - ctr.x) / (size.x || 1);
@@ -243,8 +270,20 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
         case 4: fu = 0.5 + px; ft = 0.5 + py; break;
         default: fu = 0.5 - px; ft = 0.5 + py; break;
       }
-      const X = r[0] + clamp01(fu) * r[2];
-      const Y = r[1] + (1 - clamp01(ft)) * r[3];
+      let X = r[0] + clamp01(fu) * r[2];
+      let Y = r[1] + (1 - clamp01(ft)) * r[3];
+      if (part === "torso" && face === 2) {
+        // Shoulders / neck area of a custom torso: continue the front's top edge colours
+        // instead of using the template's separate "top" region, which causes a visible seam.
+        const f = rects[5]!;
+        X = f[0] + clamp01(0.5 - px) * f[2];
+        Y = f[1] + 1.5;
+      }
+      if (neck) {
+        // Centre of the skin-colour patch painted in the atlas corner
+        X = SKIN_PATCH / 2;
+        Y = SKIN_PATCH / 2;
+      }
       uvs[(i + k) * 2] = X / TEMPLATE_W;
       uvs[(i + k) * 2 + 1] = 1 - Y / TEMPLATE_H;
     }
@@ -447,6 +486,11 @@ function BodyMesh({
     if (worn.tshirt) {
       const r = templateRects(part)[5];
       ctx.drawImage(worn.tshirt.img, r[0], r[1], r[2], r[3], r[0] * S, r[1] * S, r[2] * S, r[3] * S);
+    }
+    if (part === "torso") {
+      // Plain skin patch in an unused corner of the template, used for the neck
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, SKIN_PATCH * S, SKIN_PATCH * S);
     }
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
