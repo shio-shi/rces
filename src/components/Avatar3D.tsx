@@ -8,7 +8,15 @@ import { parseRobloxMesh, base64ToBytes } from "@/lib/robloxMesh";
 import type { AccessoryMeta } from "@/lib/rbxm";
 import faceAsset from "@/assets/classic-face.png.asset.json";
 import headAsset from "@/assets/classic-head.mesh.asset.json";
-import { buildPartMaterials, loadImage, type BodyPart, type ClothingKind, type Layer } from "@/lib/clothing";
+import {
+  buildPartMaterials,
+  loadImage,
+  TEMPLATE_W,
+  TEMPLATE_H,
+  type BodyPart,
+  type ClothingKind,
+  type Layer,
+} from "@/lib/clothing";
 
 export type WornClothing = { itemId: string; kind: ClothingKind; template: string };
 
@@ -141,6 +149,107 @@ function makeRoundedPartGeometry(size: [number, number, number], radius: number,
     }
   }
   uv.needsUpdate = true;
+  return g;
+}
+
+// ---- Classic clothing template layout (used to wrap clothing onto custom body meshes) ----
+type Rect = [number, number, number, number]; // x, y, width, height in the template image
+// Face order: +x, -x, +y, -y, +z (back), -z (front)
+type FaceRects = [Rect, Rect, Rect, Rect, Rect, Rect];
+
+const TORSO_RECTS: FaceRects = [
+  [165, 74, 64, 128],
+  [361, 74, 64, 128],
+  [231, 8, 128, 64],
+  [231, 204, 128, 64],
+  [427, 74, 128, 128],
+  [231, 74, 128, 128],
+];
+const RIGHT_LIMB_RECTS: FaceRects = [
+  [19, 355, 64, 128],
+  [151, 355, 64, 128],
+  [217, 289, 64, 64],
+  [217, 485, 64, 64],
+  [85, 355, 64, 128],
+  [217, 355, 64, 128],
+];
+const LEFT_LIMB_RECTS: FaceRects = [
+  [506, 355, 64, 128],
+  [374, 355, 64, 128],
+  [308, 289, 64, 64],
+  [308, 485, 64, 64],
+  [440, 355, 64, 128],
+  [308, 355, 64, 128],
+];
+
+function templateRects(part: BodyPart): FaceRects {
+  if (part === "torso") return TORSO_RECTS;
+  if (part === "right_arm" || part === "right_leg") return RIGHT_LIMB_RECTS;
+  return LEFT_LIMB_RECTS;
+}
+
+function templateLayersFor(part: BodyPart, layers: Layer[]) {
+  const pants = layers.filter((l) => l.kind === "pants");
+  const shirt = layers.filter((l) => l.kind === "shirt");
+  if (part === "torso") return [...pants, ...shirt];
+  if (part.endsWith("arm")) return shirt;
+  return pants;
+}
+
+const NO_LAYERS: Layer[] = [];
+
+// Gives a custom mesh UVs that point into the classic template, the same way the
+// template wraps a plain box: every triangle goes to the front/back/left/right/top/bottom
+// region of the template depending on which way it faces.
+function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
+  const g = src.index ? src.toNonIndexed() : src.clone();
+  g.computeBoundingBox();
+  const bb = g.boundingBox!;
+  const size = bb.getSize(new THREE.Vector3());
+  const ctr = bb.getCenter(new THREE.Vector3());
+  const rects = templateRects(part);
+  const pos = g.getAttribute("position") as THREE.BufferAttribute;
+  const nor = g.getAttribute("normal") as THREE.BufferAttribute;
+  const uvs = new Float32Array(pos.count * 2);
+  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+  const p = new THREE.Vector3();
+
+  for (let i = 0; i + 2 < pos.count; i += 3) {
+    // Average of the three vertex normals decides which template face this triangle uses
+    const nx = nor.getX(i) + nor.getX(i + 1) + nor.getX(i + 2);
+    const ny = nor.getY(i) + nor.getY(i + 1) + nor.getY(i + 2);
+    const nz = nor.getZ(i) + nor.getZ(i + 1) + nor.getZ(i + 2);
+    const ax = Math.abs(nx);
+    const ay = Math.abs(ny);
+    const az = Math.abs(nz);
+    let face: number;
+    if (ax >= ay && ax >= az) face = nx >= 0 ? 0 : 1;
+    else if (ay >= az) face = ny >= 0 ? 2 : 3;
+    else face = nz >= 0 ? 4 : 5;
+    const r = rects[face]!;
+
+    for (let k = 0; k < 3; k++) {
+      p.fromBufferAttribute(pos, i + k);
+      const px = (p.x - ctr.x) / (size.x || 1);
+      const py = (p.y - ctr.y) / (size.y || 1);
+      const pz = (p.z - ctr.z) / (size.z || 1);
+      let fu = 0;
+      let ft = 0;
+      switch (face) {
+        case 0: fu = 0.5 - pz; ft = 0.5 + py; break;
+        case 1: fu = 0.5 + pz; ft = 0.5 + py; break;
+        case 2: fu = 0.5 + px; ft = 0.5 - pz; break;
+        case 3: fu = 0.5 + px; ft = 0.5 + pz; break;
+        case 4: fu = 0.5 + px; ft = 0.5 + py; break;
+        default: fu = 0.5 - px; ft = 0.5 + py; break;
+      }
+      const X = r[0] + clamp01(fu) * r[2];
+      const Y = r[1] + (1 - clamp01(ft)) * r[3];
+      uvs[(i + k) * 2] = X / TEMPLATE_W;
+      uvs[(i + k) * 2 + 1] = 1 - Y / TEMPLATE_H;
+    }
+  }
+  g.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   return g;
 }
 
@@ -278,14 +387,19 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
 
 // A worn body part: the uploaded mesh is centred on the body part's slot and
 // replaces the default part. Uses the skin colour unless it has its own texture.
+// When a shirt / pants / t-shirt is worn, the classic template is wrapped onto the mesh.
 function BodyMesh({
   acc,
   position,
   color,
+  part,
+  layers = NO_LAYERS,
 }: {
   acc: LoadedAccessory;
   position: [number, number, number];
   color: string;
+  part?: BodyPart; // omit for the head (classic clothing doesn't cover it)
+  layers?: Layer[];
 }) {
   const geometry = useMemo(() => {
     try {
@@ -304,6 +418,41 @@ function BodyMesh({
     }
   }, [acc.mesh_b64]);
   useEffect(() => () => geometry?.dispose(), [geometry]);
+
+  // Which clothing (if any) applies to this body part
+  const worn = useMemo(() => {
+    if (!part) return null;
+    const use = templateLayersFor(part, layers);
+    const tshirt = part === "torso" ? layers.find((l) => l.kind === "tshirt") : undefined;
+    return use.length > 0 || tshirt ? { use, tshirt } : null;
+  }, [part, layers]);
+
+  const clothedGeo = useMemo(
+    () => (worn && geometry && part ? projectTemplateUVs(geometry, part) : null),
+    [worn, geometry, part],
+  );
+  useEffect(() => () => clothedGeo?.dispose(), [clothedGeo]);
+
+  const clothTex = useMemo(() => {
+    if (!worn || !part) return null;
+    const S = 2;
+    const c = document.createElement("canvas");
+    c.width = TEMPLATE_W * S;
+    c.height = TEMPLATE_H * S;
+    const ctx = c.getContext("2d")!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, c.width, c.height);
+    for (const l of worn.use) ctx.drawImage(l.img, 0, 0, c.width, c.height);
+    if (worn.tshirt) {
+      const r = templateRects(part)[5];
+      ctx.drawImage(worn.tshirt.img, r[0], r[1], r[2], r[3], r[0] * S, r[1] * S, r[2] * S, r[3] * S);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, [worn, part, color]);
+  useEffect(() => () => clothTex?.dispose(), [clothTex]);
 
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   useEffect(() => {
@@ -328,8 +477,16 @@ function BodyMesh({
   }, [acc.texture_data_url]);
 
   if (!geometry) return null;
+
+  if (worn && clothedGeo && clothTex)
+    return (
+      <mesh key="clothed" geometry={clothedGeo} position={position} castShadow>
+        <meshStandardMaterial key={clothTex.uuid} map={clothTex} color="#ffffff" roughness={0.55} />
+      </mesh>
+    );
+
   return (
-    <mesh geometry={geometry} position={position} castShadow>
+    <mesh key="plain" geometry={geometry} position={position} castShadow>
       <meshStandardMaterial
         key={texture ? texture.uuid : "none"}
         map={texture}
@@ -394,14 +551,14 @@ function Character({
         </mesh>
       )}
       {body.torso ? (
-        <BodyMesh acc={body.torso} position={[0, 3, 0]} color={colors.torso} />
+        <BodyMesh acc={body.torso} position={[0, 3, 0]} color={colors.torso} part="torso" layers={layers} />
       ) : (
         <Part size={[2, 2, 1]} position={[0, 3, 0]} color={colors.torso} part="torso" layers={layers} />
       )}
       {body.arm ? (
         <>
-          <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} />
-          <BodyMesh acc={body.arm} position={[1.5, 3, 0]} color={colors.right_arm} />
+          <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
+          <BodyMesh acc={body.arm} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
         </>
       ) : (
         <>
@@ -411,8 +568,8 @@ function Character({
       )}
       {body.leg ? (
         <>
-          <BodyMesh acc={body.leg} position={[-0.5, 1, 0]} color={colors.left_leg} />
-          <BodyMesh acc={body.leg} position={[0.5, 1, 0]} color={colors.right_leg} />
+          <BodyMesh acc={body.leg} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
+          <BodyMesh acc={body.leg} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
         </>
       ) : (
         <>
