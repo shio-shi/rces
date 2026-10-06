@@ -918,13 +918,14 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
     try {
       const { parseRbxm } = await import("@/lib/rbxm");
       const { parseRobloxMesh, bytesToBase64 } = await import("@/lib/robloxMesh");
-      const meta = parseRbxm(await rbxm.arrayBuffer());
-      let meshB64: string | null = null;
-      if (mesh) {
-        const bytes = new Uint8Array(await mesh.arrayBuffer());
-        parseRobloxMesh(bytes);
-        meshB64 = bytesToBase64(bytes);
-      }
+const { normalizeMeshBytes } = await import("@/lib/robloxMeshV7");
+const meta = parseRbxm(await rbxm.arrayBuffer());
+let meshB64: string | null = null;
+if (mesh) {
+  const bytes = await normalizeMeshBytes(new Uint8Array(await mesh.arrayBuffer()));
+  parseRobloxMesh(bytes);
+  meshB64 = bytesToBase64(bytes);
+}
       let textureDataUrl: string | null = null;
       if (tex)
         textureDataUrl = await new Promise<string>((res, rej) => {
@@ -982,12 +983,13 @@ function BodyPartEditor({ item }: { item: AdminItem }) {
     setBusy(true);
     try {
       const { parseRobloxMesh, bytesToBase64 } = await import("@/lib/robloxMesh");
-      const bytes = new Uint8Array(await mesh.arrayBuffer());
-      try {
-        parseRobloxMesh(bytes);
-      } catch {
-        throw new Error("That file isn't a readable Roblox .mesh file.");
-      }
+const { normalizeMeshBytes } = await import("@/lib/robloxMeshV7");
+const bytes = await normalizeMeshBytes(new Uint8Array(await mesh.arrayBuffer()));
+try {
+  parseRobloxMesh(bytes);
+} catch {
+  throw new Error("That file isn't a readable Roblox .mesh file.");
+}
       let textureDataUrl: string | null = null;
       if (tex)
         textureDataUrl = await new Promise<string>((res, rej) => {
