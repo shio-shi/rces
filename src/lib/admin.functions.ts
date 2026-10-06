@@ -459,6 +459,33 @@ export const adminRemoveAccessory = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+export const adminSetBodyPart = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string; meshB64: string; textureDataUrl?: string | null }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    if (!data.meshB64) throw new Error("Attach a .mesh file.");
+    if (data.meshB64.length > 8_000_000) throw new Error("Mesh file is too large.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: item } = await supabaseAdmin
+      .from("items")
+      .select("id, kind")
+      .eq("id", data.itemId)
+      .maybeSingle();
+    if (!item) throw new Error("Item not found");
+    if (!["head", "torso", "arm", "leg"].includes(item.kind))
+      throw new Error("Only head, torso, arm or leg items can have a body part mesh.");
+    const { error } = await supabaseAdmin.from("item_accessories").upsert({
+      item_id: data.itemId,
+      meta: { bodyPart: true } as never,
+      mesh_b64: data.meshB64,
+      texture_data_url: data.textureDataUrl ?? null,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const adminSetFace = createServerFn({ method: "POST" })
   .inputValidator((data: { itemId: string; imageDataUrl: string }) => data)
   .handler(async ({ data }) => {

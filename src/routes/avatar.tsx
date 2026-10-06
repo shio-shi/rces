@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/lib/auth";
-import { ITEM_KINDS, type Item } from "@/lib/format";
+import { ITEM_KINDS, isBodyPartKind, type Item } from "@/lib/format";
 import type { AvatarColors, LoadedAccessory, WornClothing } from "@/components/Avatar3D";
 import { CLOTHING_KINDS, isClothingKind } from "@/lib/clothing";
 import type { AccessoryMeta } from "@/lib/rbxm";
@@ -181,7 +181,7 @@ function AvatarPage() {
 // 3D face accessories (shades, masks...) have no slot, so they stack.
 const slotOf = (i?: { kind: string; isFaceImage?: boolean }) =>
   !i ? null
-  : isClothingKind(i.kind) ? i.kind
+  : isClothingKind(i.kind) || isBodyPartKind(i.kind) ? i.kind
   : i.isFaceImage ? "face-image"
   : null;
 

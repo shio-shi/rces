@@ -44,7 +44,8 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-const KINDS = ["hat", "hair", "face", "neck", "shoulder", "front", "back", "waist", "gear"];
+const KINDS = ["hat", "hair", "face", "neck", "shoulder", "front", "back", "waist", "gear", "head", "torso", "arm", "leg"];
+const BODY_KINDS = ["head", "torso", "arm", "leg"];
 const DURATIONS = [
   ["1d", "1 Day"],
   ["3d", "3 Days"],

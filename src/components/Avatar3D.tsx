@@ -24,7 +24,7 @@ export type AvatarColors = {
 export type LoadedAccessory = {
   itemId: string;
   kind: string;
-  meta: AccessoryMeta;
+  meta: AccessoryMeta & { bodyPart?: boolean };
   mesh_b64: string | null;
   texture_data_url: string | null;
 };
@@ -271,6 +271,70 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
         color={texture ? "#ffffff" : "#a3a2a5"}
         roughness={0.6}
         side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
+// A worn body part: the uploaded mesh is centred on the body part's slot and
+// replaces the default part. Uses the skin colour unless it has its own texture.
+function BodyMesh({
+  acc,
+  position,
+  color,
+}: {
+  acc: LoadedAccessory;
+  position: [number, number, number];
+  color: string;
+}) {
+  const geometry = useMemo(() => {
+    try {
+      const m = parseRobloxMesh(base64ToBytes(acc.mesh_b64!));
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.BufferAttribute(m.positions, 3));
+      g.setAttribute("normal", new THREE.BufferAttribute(m.normals, 3));
+      g.setAttribute("uv", new THREE.BufferAttribute(m.uvs, 2));
+      g.setIndex(new THREE.BufferAttribute(m.indices, 1));
+      g.computeBoundingBox();
+      const c = g.boundingBox!.getCenter(new THREE.Vector3());
+      g.translate(-c.x, -c.y, -c.z);
+      return g;
+    } catch {
+      return null;
+    }
+  }, [acc.mesh_b64]);
+  useEffect(() => () => geometry?.dispose(), [geometry]);
+
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    if (!acc.texture_data_url) return setTexture(null);
+    let cancelled = false;
+    let tex: THREE.Texture | null = null;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      tex = new THREE.Texture(img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.flipY = true;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.needsUpdate = true;
+      setTexture(tex);
+    };
+    img.src = acc.texture_data_url;
+    return () => {
+      cancelled = true;
+      tex?.dispose();
+    };
+  }, [acc.texture_data_url]);
+
+  if (!geometry) return null;
+  return (
+    <mesh geometry={geometry} position={position} castShadow>
+      <meshStandardMaterial
+        key={texture ? texture.uuid : "none"}
+        map={texture}
+        color={texture ? "#ffffff" : color}
+        roughness={0.55}
       />
     </mesh>
   );
