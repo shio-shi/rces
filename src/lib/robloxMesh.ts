@@ -1,5 +1,7 @@
 // @ts-nocheck -- binary parser; indexed access is bounds-checked by format.
 // Converts Roblox .mesh files (versions 1.x - 5.x) to plain geometry arrays.
+// Version 7.x (Draco-compressed) is handled in robloxMeshV7.ts, which decodes the
+// geometry and re-encodes it as a v2 mesh so everything else can stay synchronous.
 
 export type MeshData = {
   positions: Float32Array;
@@ -20,6 +22,74 @@ export function bytesToBase64(bytes: Uint8Array) {
   for (let i = 0; i < bytes.length; i += 0x8000)
     s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s);
+}
+
+/** Returns e.g. "2.00" or "7.00", or null if this isn't a Roblox .mesh file. */
+export function getMeshVersion(bytes: Uint8Array): string | null {
+  const header = new TextDecoder().decode(bytes.subarray(0, 12));
+  const m = header.match(/^version (\d\.\d\d)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Reads the chunk container of a v7 mesh. v7 is a list of chunks:
+ *   8-byte name, uint32 chunk version, uint32 size, then `size` bytes of data.
+ * COREMESH holds uint32 dracoSize + the Draco stream.
+ * LODS holds the face offsets of each level of detail; LOD 0 is [offsets[0], offsets[1]).
+ */
+export function readV7Container(bytes: Uint8Array): { draco: Uint8Array; lod0Faces: number | null } {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const dec = new TextDecoder();
+  let p = 13; // "version 7.00\n"
+  let draco: Uint8Array | null = null;
+  let lodOffsets: number[] = [];
+  while (p + 16 <= bytes.length) {
+    const name = dec.decode(bytes.subarray(p, p + 8)).replace(/\0+$/, "");
+    const size = dv.getUint32(p + 12, true);
+    const body = p + 16;
+    if (body + size > bytes.length) break;
+    if (name === "COREMESH") {
+      const dracoSize = dv.getUint32(body, true);
+      draco = bytes.subarray(body + 4, body + 4 + dracoSize);
+    } else if (name === "LODS" && size >= 7) {
+      const n = dv.getUint32(body + 3, true);
+      if (n > 0 && n <= 32 && body + 7 + n * 4 <= body + size) {
+        for (let i = 0; i < n; i++) lodOffsets.push(dv.getUint32(body + 7 + i * 4, true));
+      }
+    }
+    p = body + size;
+  }
+  if (!draco) throw new Error("Mesh v7 file has no COREMESH chunk.");
+  const lod0Faces = lodOffsets.length > 1 ? lodOffsets[1] - lodOffsets[0] : null;
+  return { draco, lod0Faces };
+}
+
+/** Writes plain geometry as a version 2.00 mesh, which parseRobloxMesh below reads. */
+export function meshDataToV2Bytes(m: MeshData): Uint8Array {
+  const nV = m.positions.length / 3;
+  const nF = m.indices.length / 3;
+  const out = new Uint8Array(13 + 12 + nV * 40 + nF * 12);
+  out.set(new TextEncoder().encode("version 2.00\n"), 0);
+  const dv = new DataView(out.buffer);
+  let p = 13;
+  dv.setUint16(p, 12, true); // header size
+  dv.setUint8(p + 2, 40); // vertex size
+  dv.setUint8(p + 3, 12); // face size
+  dv.setUint32(p + 4, nV, true);
+  dv.setUint32(p + 8, nF, true);
+  p += 12;
+  for (let i = 0; i < nV; i++) {
+    const b = p + i * 40;
+    for (let k = 0; k < 3; k++) dv.setFloat32(b + k * 4, m.positions[i * 3 + k], true);
+    for (let k = 0; k < 3; k++) dv.setFloat32(b + 12 + k * 4, m.normals[i * 3 + k], true);
+    dv.setFloat32(b + 24, m.uvs[i * 2], true);
+    dv.setFloat32(b + 28, m.uvs[i * 2 + 1], true);
+    // bytes 32-35: tangent (unused), 36-39: vertex color (white)
+    dv.setUint32(b + 36, 0xffffffff, true);
+  }
+  p += nV * 40;
+  for (let i = 0; i < nF * 3; i++) dv.setUint32(p + i * 4, m.indices[i], true);
+  return out;
 }
 
 function parseV1(text: string, version: string): MeshData {
@@ -47,7 +117,10 @@ export function parseRobloxMesh(bytes: Uint8Array): MeshData {
   const version = m[1];
   if (version.startsWith("1")) return parseV1(new TextDecoder().decode(bytes), version);
   const major = parseInt(version[0], 10);
-  if (major > 5) throw new Error(`Mesh version ${version} is not supported yet (use v2-v5).`);
+  if (major > 5)
+    throw new Error(
+      `Mesh version ${version} must be converted first (call normalizeMeshBytes from robloxMeshV7.ts before parsing).`,
+    );
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let p = 13; // "version x.xx\n"
   const hStart = p;
