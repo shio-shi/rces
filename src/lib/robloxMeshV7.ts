@@ -73,10 +73,20 @@ async function parseV7(bytes: Uint8Array): Promise<MeshData> {
     const n = geo.getAttribute("normal");
     if (n) normals.set(n.array as ArrayLike<number>);
   }
+
+  const ROTATE_Y_180 = true; // hair faces backwards
+  if (ROTATE_Y_180) {
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i] = -positions[i];         // x
+      positions[i + 2] = -positions[i + 2]; // z
+      normals[i] = -normals[i];
+      normals[i + 2] = -normals[i + 2];
+    }
+  }
+
   geo.dispose();
   return { positions, normals, uvs, indices };
 }
-
 /**
  * Call this on the raw mesh bytes at upload time, before storing them.
  * v7 meshes are decoded and re-encoded as a v2 mesh; every other version is
