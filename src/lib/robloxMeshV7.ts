@@ -16,6 +16,15 @@ const FLIP_V = false;
 // Set to false to disable.
 const ROTATE_Y_180 = true;
 
+// Nudge the converted mesh. Units are the same as the mesh's own units (studs).
+// OFFSET_Z: positive moves the hair backward (toward the back of the head), negative moves it forward.
+// OFFSET_Y: positive moves it up, negative moves it down.
+// OFFSET_X: positive/negative moves it sideways.
+// Re-upload the hair after changing these.
+const OFFSET_X = 0;
+const OFFSET_Y = 0;
+const OFFSET_Z = 0.3;
+
 let loader: DRACOLoader | null = null;
 function getLoader() {
   if (!loader) {
@@ -94,6 +103,14 @@ async function parseV7(bytes: Uint8Array): Promise<MeshData> {
       positions[i + 2] = 2 * cz - positions[i + 2]; // z, mirrored around the mesh's center
       normals[i] = -normals[i];
       normals[i + 2] = -normals[i + 2];
+    }
+  }
+
+  if (OFFSET_X !== 0 || OFFSET_Y !== 0 || OFFSET_Z !== 0) {
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i] += OFFSET_X;
+      positions[i + 1] += OFFSET_Y;
+      positions[i + 2] += OFFSET_Z;
     }
   }
 
