@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, OrbitControls, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -822,49 +822,165 @@ function Character({
   );
 }
 
+// ---- 2D render (Roblox-style thumbnail) ----
+// The 2D view is a snapshot of the same 3D scene taken from a fixed, slightly tilted camera.
+// The camera sits toward -x (the side of the "left_arm" slot), like Roblox thumbnails.
+const SNAP_YAW = 22; // degrees around the character; raise for a more side-on view, negative to tilt the other way
+const SNAP_PITCH = 6; // degrees above eye level
+const SNAP_FOV = 30;
+const SNAP_TARGET = new THREE.Vector3(0, 2.7, 0);
+const SNAP_SETTLE_MS = 300; // wait this long after the last scene update before capturing
+
+function Snapshotter({ onCapture }: { onCapture: (url: string) => void }) {
+  const { gl, scene, size, invalidate } = useThree();
+  const timer = useRef<number | undefined>(undefined);
+  const cam = useMemo(() => new THREE.PerspectiveCamera(SNAP_FOV, 1, 0.1, 100), []);
+
+  const capture = useCallback(() => {
+    const aspect = size.width / size.height;
+    // Distance that fits the whole avatar for both tall and narrow canvases
+    const t = Math.tan(THREE.MathUtils.degToRad(SNAP_FOV) / 2);
+    const dist = Math.max(3.4 / t, 3.2 / (t * aspect)) * 1.05;
+    const yaw = THREE.MathUtils.degToRad(SNAP_YAW);
+    const pitch = THREE.MathUtils.degToRad(SNAP_PITCH);
+    cam.aspect = aspect;
+    cam.position.set(
+      SNAP_TARGET.x - Math.sin(yaw) * Math.cos(pitch) * dist,
+      SNAP_TARGET.y + Math.sin(pitch) * dist,
+      SNAP_TARGET.z - Math.cos(yaw) * Math.cos(pitch) * dist,
+    );
+    cam.lookAt(SNAP_TARGET);
+    cam.updateProjectionMatrix();
+    cam.updateMatrixWorld();
+
+    const ground = scene.getObjectByName("ground");
+    const wasVisible = ground?.visible ?? true;
+    if (ground) ground.visible = false; // Roblox thumbnails have no floor shadow
+
+    gl.render(scene, cam);
+    // toDataURL must run in the same tick as the render (no preserveDrawingBuffer needed)
+    const url = gl.domElement.toDataURL("image/png");
+
+    if (ground) ground.visible = wasVisible;
+    onCapture(url);
+  }, [cam, gl, scene, size, onCapture]);
+
+  // Every rendered frame (asset loaded, prop changed...) restarts the countdown,
+  // so we only capture once the scene has settled.
+  const schedule = useCallback(() => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(capture, SNAP_SETTLE_MS);
+  }, [capture]);
+
+  useFrame(schedule);
+  useEffect(() => {
+    invalidate();
+    schedule();
+    return () => {
+      window.clearTimeout(timer.current);
+      invalidate(); // redraw with the normal camera when leaving 2D mode
+    };
+  }, [invalidate, schedule]);
+
+  return null;
+}
+
 export function Avatar3D({
   colors,
   accessories,
   clothing = [],
   faceUrl = null,
+  defaultView = "2d",
+  onSnapshot,
 }: {
   colors: AvatarColors;
   accessories: LoadedAccessory[];
   clothing?: WornClothing[];
   faceUrl?: string | null;
+  defaultView?: "2d" | "3d";
+  onSnapshot?: (dataUrl: string) => void; // optional: reuse the render as a thumbnail
 }) {
   const controls = useRef<OrbitControlsImpl>(null);
+  const [view, setView] = useState<"2d" | "3d">(defaultView);
+  const [snap, setSnap] = useState<string | null>(null);
+
+  const handleCapture = useCallback(
+    (url: string) => {
+      setSnap(url);
+      onSnapshot?.(url);
+    },
+    [onSnapshot],
+  );
+
+  const switchView = (v: "2d" | "3d") => {
+    if (v === "2d") setSnap(null); // the old image may be stale after editing in 3D
+    setView(v);
+  };
+
+  const tabClass = (active: boolean) =>
+    `px-3 py-1 text-xs font-bold ${active ? "bg-primary text-primary-foreground" : "bg-card hover:bg-accent"}`;
+
   return (
     <div className="relative h-full w-full">
-      <Canvas shadows dpr={[1, 1.5]} frameloop="demand" camera={{ position: [-3, 4.5, -9], fov: 40 }}>
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[-5, 10, -6]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
-        <Suspense fallback={null}>
-          <Environment resolution={64}>
-            <Lightformer intensity={2} position={[0, 6, -4]} scale={[10, 10, 1]} />
-            <Lightformer intensity={1} position={[5, 2, 2]} rotation-y={-Math.PI / 2} scale={[10, 3, 1]} />
-          </Environment>
-        </Suspense>
-        <Character colors={colors} accessories={accessories} clothing={clothing} faceUrl={faceUrl} />
-        <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[20, 20]} />
-          <shadowMaterial opacity={0.25} />
-        </mesh>
-        <OrbitControls
-          ref={controls}
-          target={[0, 3, 0]}
-          enablePan={false}
-          minDistance={5}
-          maxDistance={16}
-          maxPolarAngle={Math.PI * 0.6}
-        />
-      </Canvas>
-      <button
-        onClick={() => controls.current?.reset()}
-        className="absolute bottom-2 right-2 rounded-md border border-border bg-card px-2 py-1 text-xs font-bold hover:bg-accent"
-      >
-        Reset camera
-      </button>
+      {/* The canvas stays mounted in 2D mode (invisible) so it can keep rendering snapshots */}
+      <div className={view === "3d" ? "h-full w-full" : "pointer-events-none absolute inset-0 opacity-0"}>
+        <Canvas shadows dpr={[1, 1.5]} frameloop="demand" camera={{ position: [-3, 4.5, -9], fov: 40 }}>
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[-5, 10, -6]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
+          <Suspense fallback={null}>
+            <Environment resolution={64}>
+              <Lightformer intensity={2} position={[0, 6, -4]} scale={[10, 10, 1]} />
+              <Lightformer intensity={1} position={[5, 2, 2]} rotation-y={-Math.PI / 2} scale={[10, 3, 1]} />
+            </Environment>
+          </Suspense>
+          <Character colors={colors} accessories={accessories} clothing={clothing} faceUrl={faceUrl} />
+          <mesh name="ground" position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[20, 20]} />
+            <shadowMaterial opacity={0.25} />
+          </mesh>
+          <OrbitControls
+            ref={controls}
+            target={[0, 3, 0]}
+            enablePan={false}
+            minDistance={5}
+            maxDistance={16}
+            maxPolarAngle={Math.PI * 0.6}
+          />
+          {view === "2d" && <Snapshotter onCapture={handleCapture} />}
+        </Canvas>
+      </div>
+
+      {view === "2d" &&
+        (snap ? (
+          <img
+            src={snap}
+            alt="Avatar"
+            draggable={false}
+            className="absolute inset-0 h-full w-full select-none object-contain"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+            Rendering…
+          </div>
+        ))}
+
+      <div className="absolute left-2 top-2 flex overflow-hidden rounded-md border border-border">
+        <button onClick={() => switchView("2d")} className={tabClass(view === "2d")}>
+          2D
+        </button>
+        <button onClick={() => switchView("3d")} className={tabClass(view === "3d")}>
+          3D
+        </button>
+      </div>
+
+      {view === "3d" && (
+        <button
+          onClick={() => controls.current?.reset()}
+          className="absolute bottom-2 right-2 rounded-md border border-border bg-card px-2 py-1 text-xs font-bold hover:bg-accent"
+        >
+          Reset camera
+        </button>
+      )}
     </div>
   );
 }
