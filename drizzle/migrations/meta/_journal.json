@@ -64,6 +64,13 @@
       "when": 1791195393656,
       "tag": "0008_clothing",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791282339798,
+      "tag": "0009_body_part_kinds",
+      "breakpoints": true
     }
   ]
 }

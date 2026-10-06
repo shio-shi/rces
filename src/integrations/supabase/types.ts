@@ -522,6 +522,10 @@ export type Database = {
         | "shirt"
         | "pants"
         | "tshirt"
+        | "head"
+        | "torso"
+        | "arm"
+        | "leg"
       trade_status: "pending" | "accepted" | "declined" | "cancelled"
     }
     CompositeTypes: {
@@ -666,6 +670,10 @@ export const Constants = {
         "shirt",
         "pants",
         "tshirt",
+        "head",
+        "torso",
+        "arm",
+        "leg",
       ],
       trade_status: ["pending", "accepted", "declined", "cancelled"],
     },

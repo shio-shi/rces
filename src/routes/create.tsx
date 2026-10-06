@@ -124,6 +124,7 @@ function CreatePage() {
     setDescription("");
     await refresh();
     await qc.invalidateQueries({ queryKey: ["my-creations", uid] });
+    return;
   }
 
   if (!uid) {

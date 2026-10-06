@@ -8,7 +8,16 @@ export const ITEM_KINDS = [
   "back",
   "waist",
   "gear",
+  "head",
+  "torso",
+  "arm",
+  "leg",
 ] as const;
+
+export const BODY_PART_KINDS = ["head", "torso", "arm", "leg"] as const;
+export type BodyPartKind = (typeof BODY_PART_KINDS)[number];
+export const isBodyPartKind = (k: string): k is BodyPartKind =>
+  (BODY_PART_KINDS as readonly string[]).includes(k);
 
 export type ItemKind = (typeof ITEM_KINDS)[number] | "shirt" | "pants" | "tshirt";
 export type ItemClass = "normal" | "limited" | "limitedu";

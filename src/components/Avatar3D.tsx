@@ -24,7 +24,7 @@ export type AvatarColors = {
 export type LoadedAccessory = {
   itemId: string;
   kind: string;
-  meta: AccessoryMeta;
+  meta: AccessoryMeta & { bodyPart?: boolean };
   mesh_b64: string | null;
   texture_data_url: string | null;
 };
@@ -117,8 +117,8 @@ function useHeadMesh() {
 function makeRoundedPartGeometry(size: [number, number, number], radius: number, smoothness: number) {
   const [w, h, d] = size;
   const g = new RoundedBoxGeometry(w, h, d, smoothness, radius);
-  const pos = g.attributes.position;
-  const uv = g.attributes.uv;
+  const pos = g.getAttribute("position") as THREE.BufferAttribute;
+  const uv = g.getAttribute("uv") as THREE.BufferAttribute;
   const index = g.index; // RoundedBoxGeometry is non-indexed, so this is usually null
   for (const grp of g.groups) {
     for (let i = grp.start; i < grp.start + grp.count; i++) {
@@ -276,6 +276,70 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
   );
 }
 
+// A worn body part: the uploaded mesh is centred on the body part's slot and
+// replaces the default part. Uses the skin colour unless it has its own texture.
+function BodyMesh({
+  acc,
+  position,
+  color,
+}: {
+  acc: LoadedAccessory;
+  position: [number, number, number];
+  color: string;
+}) {
+  const geometry = useMemo(() => {
+    try {
+      const m = parseRobloxMesh(base64ToBytes(acc.mesh_b64!));
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.BufferAttribute(m.positions, 3));
+      g.setAttribute("normal", new THREE.BufferAttribute(m.normals, 3));
+      g.setAttribute("uv", new THREE.BufferAttribute(m.uvs, 2));
+      g.setIndex(new THREE.BufferAttribute(m.indices, 1));
+      g.computeBoundingBox();
+      const c = g.boundingBox!.getCenter(new THREE.Vector3());
+      g.translate(-c.x, -c.y, -c.z);
+      return g;
+    } catch {
+      return null;
+    }
+  }, [acc.mesh_b64]);
+  useEffect(() => () => geometry?.dispose(), [geometry]);
+
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    if (!acc.texture_data_url) return setTexture(null);
+    let cancelled = false;
+    let tex: THREE.Texture | null = null;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      tex = new THREE.Texture(img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.flipY = true;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.needsUpdate = true;
+      setTexture(tex);
+    };
+    img.src = acc.texture_data_url;
+    return () => {
+      cancelled = true;
+      tex?.dispose();
+    };
+  }, [acc.texture_data_url]);
+
+  if (!geometry) return null;
+  return (
+    <mesh geometry={geometry} position={position} castShadow>
+      <meshStandardMaterial
+        key={texture ? texture.uuid : "none"}
+        map={texture}
+        color={texture ? "#ffffff" : color}
+        roughness={0.55}
+      />
+    </mesh>
+  );
+}
+
 function useLayers(clothing: WornClothing[]) {
   const [layers, setLayers] = useState<Layer[]>([]);
   const key = clothing.map((c) => c.itemId).join(",");
@@ -308,9 +372,13 @@ function Character({
   const layers = useLayers(clothing);
   const face = useFaceTexture(faceUrl);
   const headGeo = useHeadMesh();
+  const body: { head?: LoadedAccessory; torso?: LoadedAccessory; arm?: LoadedAccessory; leg?: LoadedAccessory } = {};
+  for (const a of accessories) if (a.meta?.bodyPart && a.mesh_b64) body[a.kind as "head"] = a;
   return (
     <group>
-      {headGeo ? (
+      {body.head ? (
+        <BodyMesh acc={body.head} position={[0, 4.53, 0]} color={colors.head} />
+      ) : headGeo ? (
         <mesh geometry={headGeo} position={[0, 4.53, 0]} castShadow>
           <meshStandardMaterial color={colors.head} roughness={0.55} />
         </mesh>
@@ -325,13 +393,35 @@ function Character({
           <meshStandardMaterial map={face} transparent roughness={0.55} />
         </mesh>
       )}
-      <Part size={[2, 2, 1]} position={[0, 3, 0]} color={colors.torso} part="torso" layers={layers} />
-      <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
-      <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
-      <Part size={[0.98, 2, 1]} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
-      <Part size={[0.98, 2, 1]} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
+      {body.torso ? (
+        <BodyMesh acc={body.torso} position={[0, 3, 0]} color={colors.torso} />
+      ) : (
+        <Part size={[2, 2, 1]} position={[0, 3, 0]} color={colors.torso} part="torso" layers={layers} />
+      )}
+      {body.arm ? (
+        <>
+          <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} />
+          <BodyMesh acc={body.arm} position={[1.5, 3, 0]} color={colors.right_arm} />
+        </>
+      ) : (
+        <>
+          <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
+          <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
+        </>
+      )}
+      {body.leg ? (
+        <>
+          <BodyMesh acc={body.leg} position={[-0.5, 1, 0]} color={colors.left_leg} />
+          <BodyMesh acc={body.leg} position={[0.5, 1, 0]} color={colors.right_leg} />
+        </>
+      ) : (
+        <>
+          <Part size={[0.98, 2, 1]} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
+          <Part size={[0.98, 2, 1]} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
+        </>
+      )}
       {accessories
-        .filter((a) => a.mesh_b64 && a.meta?.attachmentPos)
+        .filter((a) => a.mesh_b64 && a.meta?.attachmentPos && !a.meta?.bodyPart)
         .map((a) => (
           <Accessory key={a.itemId} acc={a} />
         ))}
