@@ -68,9 +68,19 @@ const KIND_DEFAULT: Record<string, string> = {
   gear: "RightGripAttachment",
 };
 
-// Where the right hand ends up when the arm is raised forward to hold a gear/tool:
-// shoulder is at (1.5, 4, 0), the arm points toward -z (front) and is 2 studs long.
-const HELD_GRIP: [number, number, number] = [1.5, 4, -2];
+// Right arm pivots (the group the arm hangs from).
+// Hanging: pivot at the top of the arm, the arm extends 2 studs straight down.
+// Raised (Roblox R6 tool pose): the shoulder joint sits at y = 3.5 and the arm points forward (-z).
+// With the +90 deg X rotation, the arm's centre ends up at (1.5, 3.5, -0.5) and its tip at (1.5, 3.5, -1.5).
+const ARM_HANGING_PIVOT: [number, number, number] = [1.5, 4, 0];
+const ARM_RAISED_PIVOT: [number, number, number] = [1.5, 3.5, 0.5];
+
+// Where the right hand ends up when the arm is raised forward to hold a gear/tool (tip of the raised arm).
+const HELD_GRIP: [number, number, number] = [1.5, 3.5, -1.5];
+
+// Extra world-space shift applied to held items only. Tune this until the hand sits on the handle:
+// +y slides the item up through the hand (use it if the hand is on the blade), -y slides it down.
+const GRIP_NUDGE: [number, number, number] = [0, 1.2, 0];
 
 function attachmentNameFor(acc: LoadedAccessory) {
   const n = acc.meta?.attachmentName;
@@ -538,10 +548,13 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     // Rows without real 3D positioning data (e.g. flat face images) must not crash the scene
     if (!meta || !meta.attachmentPos) return new THREE.Matrix4();
     const name = attachmentNameFor(acc);
+    const held = name === "RightGripAttachment";
     // Held items follow the raised right hand instead of the arm hanging at the side
-    const charPos = name === "RightGripAttachment" ? HELD_GRIP : ATTACH[name] ?? [0, 5.1, 0];
+    const charPos: [number, number, number] = held
+      ? [HELD_GRIP[0] + GRIP_NUDGE[0], HELD_GRIP[1] + GRIP_NUDGE[1], HELD_GRIP[2] + GRIP_NUDGE[2]]
+      : ATTACH[name] ?? [0, 5.1, 0];
     const charM = new THREE.Matrix4().makeTranslation(...charPos);
-    if (name === "RightGripAttachment") charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+    if (held) charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
     const r = (meta.attachmentRot?.length === 9 ? meta.attachmentRot : [1, 0, 0, 0, 1, 0, 0, 0, 1]) as [number, number, number, number, number, number, number, number, number];
     const accM = new THREE.Matrix4().set(
       r[0], r[1], r[2], meta.attachmentPos[0],
@@ -779,6 +792,8 @@ function Character({
     (a) =>
       a.mesh_b64 && a.meta?.attachmentPos && !a.meta?.bodyPart && attachmentNameFor(a) === "RightGripAttachment",
   );
+  const armPivot = holdingTool ? ARM_RAISED_PIVOT : ARM_HANGING_PIVOT;
+  const armRotX = holdingTool ? Math.PI / 2 : 0;
   return (
     <group name="avatar">
       {body.head ? (
@@ -806,14 +821,14 @@ function Character({
       {body.arm ? (
         <>
           <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
-          <group position={[1.5, 4, 0]} rotation={[holdingTool ? Math.PI / 2 : 0, 0, 0]}>
+          <group position={armPivot} rotation={[armRotX, 0, 0]}>
             <BodyMesh acc={body.arm} position={[0, -1, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
           </group>
         </>
       ) : (
         <>
           <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
-          <group position={[1.5, 4, 0]} rotation={[holdingTool ? Math.PI / 2 : 0, 0, 0]}>
+          <group position={armPivot} rotation={[armRotX, 0, 0]}>
             <Part size={[1, 2, 1]} position={[0, -1, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
           </group>
         </>
