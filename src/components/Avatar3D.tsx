@@ -238,7 +238,10 @@ const SKIN_PATCH = 12;
 // Gives a custom mesh UVs that point into the classic template, the same way the
 // template wraps a plain box: every triangle goes to the front/back/left/right/top/bottom
 // region of the template depending on which way it faces.
-function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
+// mirrorX: the mesh is shown flipped sideways (left arm / left leg made from a right-side upload),
+// so the mapping is worked out as seen in the world and the artwork isn't reversed.
+function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart, mirrorX = false) {
+  const flip = mirrorX ? -1 : 1;
   const g = src.index ? src.toNonIndexed() : src.clone();
   g.computeBoundingBox();
   const bb = g.boundingBox!;
@@ -274,7 +277,7 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
 
   for (let i = 0; i + 2 < pos.count; i += 3) {
     // Average of the three vertex normals decides which template face this triangle uses
-    const nx = nor.getX(i) + nor.getX(i + 1) + nor.getX(i + 2);
+    const nx = (nor.getX(i) + nor.getX(i + 1) + nor.getX(i + 2)) * flip;
     const ny = nor.getY(i) + nor.getY(i + 1) + nor.getY(i + 2);
     const nz = nor.getZ(i) + nor.getZ(i + 1) + nor.getZ(i + 2);
     const ax = Math.abs(nx);
@@ -312,7 +315,7 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
 
     for (let k = 0; k < 3; k++) {
       p.fromBufferAttribute(pos, i + k);
-      const px = (p.x - ctr.x) / (size.x || 1);
+      const px = ((p.x - ctr.x) / (size.x || 1)) * flip;
       const py = (p.y - ctr.y) / (size.y || 1);
       const pz = (p.z - ctr.z) / (size.z || 1);
       let fu = 0;
@@ -617,6 +620,8 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
 // A worn body part: the uploaded mesh is centred on the body part's slot and
 // replaces the default part. Uses the skin colour unless it has its own texture.
 // When a shirt / pants / t-shirt is worn, the classic template is wrapped onto the mesh.
+// mirror: show the mesh flipped sideways. The uploaded arm/leg is a right-side part, so the
+// left arm and left leg are drawn as its mirror image.
 function BodyMesh({
   acc,
   position,
@@ -624,6 +629,7 @@ function BodyMesh({
   part,
   layers = NO_LAYERS,
   face = null,
+  mirror = false,
 }: {
   acc: LoadedAccessory;
   position: [number, number, number];
@@ -631,6 +637,7 @@ function BodyMesh({
   part?: BodyPart; // omit for the head (classic clothing doesn't cover it)
   layers?: Layer[];
   face?: THREE.Texture | null; // head only: painted directly onto the mesh
+  mirror?: boolean;
 }) {
   const geometry = useMemo(() => {
     try {
@@ -659,8 +666,8 @@ function BodyMesh({
   }, [part, layers]);
 
   const clothedGeo = useMemo(
-    () => (worn && geometry && part ? projectTemplateUVs(geometry, part) : null),
-    [worn, geometry, part],
+    () => (worn && geometry && part ? projectTemplateUVs(geometry, part, mirror) : null),
+    [worn, geometry, part, mirror],
   );
   useEffect(() => () => clothedGeo?.dispose(), [clothedGeo]);
 
@@ -746,6 +753,8 @@ function BodyMesh({
 
   if (!geometry) return null;
 
+  const scale: [number, number, number] = mirror ? [-1, 1, 1] : [1, 1, 1];
+
   if (faceGeo && faceTex)
     return (
       <mesh key="faced" geometry={faceGeo} position={position} castShadow>
@@ -755,13 +764,13 @@ function BodyMesh({
 
   if (worn && clothedGeo && clothTex)
     return (
-      <mesh key="clothed" geometry={clothedGeo} position={position} castShadow>
+      <mesh key="clothed" geometry={clothedGeo} position={position} scale={scale} castShadow>
         <meshStandardMaterial key={clothTex.uuid} map={clothTex} color="#ffffff" roughness={0.55} />
       </mesh>
     );
 
   return (
-    <mesh key="plain" geometry={geometry} position={position} castShadow>
+    <mesh key="plain" geometry={geometry} position={position} scale={scale} castShadow>
       <meshStandardMaterial
         key={texture ? texture.uuid : "none"}
         map={texture}
@@ -839,7 +848,7 @@ function Character({
       )}
       {body.arm ? (
         <>
-          <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
+          <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} mirror />
           <group position={armPivot} rotation={[armRotX, 0, 0]}>
             <BodyMesh acc={body.arm} position={[0, -1, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
           </group>
@@ -854,7 +863,7 @@ function Character({
       )}
       {body.leg ? (
         <>
-          <BodyMesh acc={body.leg} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
+          <BodyMesh acc={body.leg} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} mirror />
           <BodyMesh acc={body.leg} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
         </>
       ) : (
