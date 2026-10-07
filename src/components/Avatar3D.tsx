@@ -95,84 +95,6 @@ function attachmentNameFor(acc: LoadedAccessory) {
   return n && ATTACH[n] ? n : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
 }
 
-// ---- Face size normalisation ----
-// Face images don't all use their canvas the same way: some have big features filling the
-// image, others have lots of transparent padding around small features. So every non-default
-// face is measured (its visible, non-transparent area) and scaled so its features come out the
-// same size as the default face's. The scale is stored in texture.userData.fit.
-//
-// Extra size multiplier applied on top, to custom faces only. 1 = same size as the default
-// face, 1.15 = 15% bigger, 0.9 = 10% smaller.
-const FACE_CUSTOM_BOOST = 1;
-// The automatic scale is kept inside this range, so odd images can't become huge or tiny
-const FACE_FIT_MIN = 0.7;
-const FACE_FIT_MAX = 2.5;
-// Pixels with alpha at or below this count as transparent when measuring
-const FACE_ALPHA_MIN = 24;
-
-type FaceContent = { ratio: number; reach: number };
-
-// ratio: how much of the image (0..1) the visible features span, widest direction.
-// reach: how close the features get to the image edge (1 = touching the edge).
-// Returns null for images that can't be measured (opaque background, cross-origin pixels...).
-function measureFaceContent(img: HTMLImageElement): FaceContent | null {
-  try {
-    const N = 128;
-    const c = document.createElement("canvas");
-    c.width = c.height = N;
-    const ctx = c.getContext("2d", { willReadFrequently: true })!;
-    ctx.drawImage(img, 0, 0, N, N);
-    const d = ctx.getImageData(0, 0, N, N).data;
-    let minX = N;
-    let minY = N;
-    let maxX = -1;
-    let maxY = -1;
-    for (let y = 0; y < N; y++) {
-      for (let x = 0; x < N; x++) {
-        if (d[(y * N + x) * 4 + 3]! > FACE_ALPHA_MIN) {
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-    }
-    if (maxX < 0) return null;
-    const w = (maxX - minX + 1) / N;
-    const h = (maxY - minY + 1) / N;
-    if (w > 0.97 && h > 0.97) return null; // fills the whole image (e.g. opaque background)
-    const reach =
-      Math.max(
-        Math.abs(minX / N - 0.5),
-        Math.abs((maxX + 1) / N - 0.5),
-        Math.abs(minY / N - 0.5),
-        Math.abs((maxY + 1) / N - 0.5),
-      ) * 2;
-    return { ratio: Math.max(w, h), reach };
-  } catch {
-    return null;
-  }
-}
-
-// How big the default face's features are, measured once
-let defaultFaceRatioPromise: Promise<number | null> | null = null;
-function getDefaultFaceRatio() {
-  if (!defaultFaceRatioPromise) {
-    defaultFaceRatioPromise = new Promise<number | null>((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(measureFaceContent(img)?.ratio ?? null);
-      img.onerror = () => resolve(null);
-      img.src = faceAsset.url;
-    });
-  }
-  return defaultFaceRatioPromise;
-}
-
-function faceFit(face: THREE.Texture | null): number {
-  return (face?.userData?.fit as number | undefined) ?? 1;
-}
-
 function useFaceTexture(customUrl?: string | null) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
   useEffect(() => {
@@ -180,28 +102,12 @@ function useFaceTexture(customUrl?: string | null) {
     let t: THREE.Texture | null = null;
     const img = new Image();
     img.crossOrigin = "anonymous";
-
-    const finish = (fit: number) => {
+    img.onload = () => {
       if (cancelled) return;
       t = new THREE.Texture(img);
       t.colorSpace = THREE.SRGBColorSpace;
-      t.userData.fit = fit;
       t.needsUpdate = true;
       setTex(t);
-    };
-
-    img.onload = () => {
-      if (cancelled) return;
-      if (!customUrl) return finish(1); // the default face is the size reference
-      getDefaultFaceRatio().then((defaultRatio) => {
-        const m = measureFaceContent(img);
-        let fit = 1;
-        if (defaultRatio && m) {
-          // Match the default face's feature size, but never push features past the image edge
-          fit = Math.min(Math.max(defaultRatio / m.ratio, FACE_FIT_MIN), FACE_FIT_MAX, 1 / Math.max(m.reach, 0.01));
-        }
-        finish(fit * FACE_CUSTOM_BOOST);
-      });
     };
     img.onerror = () => {
       // If a custom face fails to load, fall back to the default face
@@ -449,7 +355,6 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart, mirrorX =
 
 // Size (in world studs) the face image covers on the front of the head.
 // Matches the old 1.1 x 1.1 plane. Change this if the face looks too big or small.
-// (This changes every face. To size custom faces separately, use FACE_CUSTOM_BOOST above.)
 const FACE_SIZE = 1.1;
 // Size (in canvas pixels) of the reserved skin-colour patch in the face texture's corner
 const FACE_SKIN_PATCH = 16;
@@ -545,9 +450,7 @@ function FacedHead({
     ctx.imageSmoothingEnabled = true;
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, S, S);
-    // Draw the face scaled around the centre so every face ends up the same size
-    const k = faceFit(face);
-    ctx.drawImage(face.image as CanvasImageSource, S / 2 - (S * k) / 2, S / 2 - (S * k) / 2, S * k, S * k);
+    ctx.drawImage(face.image as CanvasImageSource, 0, 0, S, S);
     // Guaranteed plain skin patch in the bottom-left corner (UV 0,0 with flipY) for
     // every triangle that isn't on the front of the face
     ctx.fillStyle = color;
@@ -838,14 +741,10 @@ function BodyMesh({
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, W / 2, H);
     if (texture?.image) ctx.drawImage(texture.image as CanvasImageSource, 0, 0, W / 2, H);
-    // Right half: the face on a skin background, scaled around the centre of the half
-    // so every face ends up the same size
+    // Right half: the face on a skin background
     ctx.fillStyle = color;
     ctx.fillRect(W / 2, 0, W / 2, H);
-    const k = faceFit(face);
-    const fw = (W / 2) * k;
-    const fh = H * k;
-    ctx.drawImage(face.image as CanvasImageSource, W * 0.75 - fw / 2, H / 2 - fh / 2, fw, fh);
+    ctx.drawImage(face.image as CanvasImageSource, W / 2, 0, W / 2, H);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
