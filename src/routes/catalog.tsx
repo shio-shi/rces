@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { ItemCard } from "@/components/ItemCard";
@@ -36,9 +37,18 @@ const FILTERS = [
 function CatalogPage() {
   const [cls, setCls] = useState<string>("all");
   const [kind, setKind] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [term, setTerm] = useState(""); // the search text actually used for the query
+
+  // Wait a moment after typing stops before searching, so we don't query on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setTerm(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const { data: items, isLoading } = useQuery({
-    queryKey: ["catalog", cls, kind],
+    queryKey: ["catalog", cls, kind, term],
+    staleTime: 60 * 1000,
     queryFn: async () => {
       let q = supabase.from("items").select("*").order("created_at", { ascending: false });
       if (cls === "clothing") q = q.in("kind", [...CLOTHING_KINDS]);
@@ -47,6 +57,8 @@ function CatalogPage() {
         if (cls !== "all") q = q.eq("class", cls as "normal");
       }
       if (kind !== "all") q = q.eq("kind", kind as "hat");
+      // Search by name (case-insensitive); escape the characters that have a special meaning in patterns
+      if (term) q = q.ilike("name", `%${term.replace(/[\\%_]/g, "\\$&")}%`);
       const { data } = await q;
       const list = (data ?? []) as Item[];
       const ids = [...new Set(list.map((i) => i.creator_id).filter(Boolean))] as string[];
@@ -62,6 +74,27 @@ function CatalogPage() {
     <AppLayout>
       <div className="rb-card p-4">
         <h1 className="rb-heading">Catalog</h1>
+
+        <div className="relative mb-3 max-w-md">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search items"
+            maxLength={50}
+            className="h-9 w-full rounded-md border border-input bg-card pl-8 pr-8 text-sm outline-none focus:border-primary"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
         <div className="mb-4 flex flex-wrap gap-2">
           {FILTERS.map((f) => (
             <button
@@ -102,7 +135,9 @@ function CatalogPage() {
             ))}
           </div>
         ) : (
-          <p className="py-8 text-center text-sm text-muted-foreground">No items found.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {term ? `No items found for "${term}".` : "No items found."}
+          </p>
         )}
       </div>
     </AppLayout>
