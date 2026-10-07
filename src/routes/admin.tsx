@@ -24,7 +24,6 @@ import {
   adminLogin,
   adminLogout,
   adminRestockItem,
-  adminSetItemHidden,
   adminSetItemRap,
   adminSetItemValue,
   adminSetPromocodeActive,
@@ -91,7 +90,6 @@ type AdminItem = {
   stock: number | null;
   sale_ends_at: string | null;
   description: string;
-  is_hidden: boolean;
 };
 
 type InventoryRow = {
@@ -117,7 +115,6 @@ function AdminPage() {
   const setCodeActive = useServerFn(adminSetPromocodeActive);
   const listItems = useServerFn(adminListItems);
   const deleteItem = useServerFn(adminDeleteItem);
-  const setItemHidden = useServerFn(adminSetItemHidden);
   const getInventory = useServerFn(adminGetInventory);
   const giveItem = useServerFn(adminGiveItem);
   const removeUserItem = useServerFn(adminRemoveUserItem);
@@ -238,16 +235,6 @@ function AdminPage() {
     try {
       await deleteItem({ data: { itemId: item.id } });
       toast.success("Item deleted.");
-      await reloadItems();
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
-
-  async function doToggleHidden(item: AdminItem) {
-    try {
-      await setItemHidden({ data: { itemId: item.id, hidden: !item.is_hidden } });
-      toast.success(item.is_hidden ? "Item is visible in the catalog." : "Item hidden from the catalog.");
       await reloadItems();
     } catch (e) {
       toast.error((e as Error).message);
@@ -694,11 +681,6 @@ function AdminPage() {
             {itemOptions.map((i) => (
               <li key={i.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
                 <span className="font-bold">{i.name}</span>
-                {i.is_hidden && (
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
-                    Hidden
-                  </span>
-                )}
                 <span className="capitalize text-muted-foreground">
                   {i.kind} · {i.class === "limitedu" ? "Limited U" : i.class} · {i.price.toLocaleString("en-US")} Rawbux
                   {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
@@ -708,12 +690,6 @@ function AdminPage() {
                 {i.kind === "face" && <FaceEditor item={i} />}
                 <ValueEditor item={i} onSaved={reloadItems} />
                 {i.class !== "normal" && <RestockEditor item={i} onSaved={reloadItems} />}
-                <button
-                  onClick={() => doToggleHidden(i)}
-                  className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface"
-                >
-                  {i.is_hidden ? "Show in catalog" : "Hide from catalog"}
-                </button>
                 <button
                   onClick={() => doDeleteItem(i)}
                   className="rounded-md bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground hover:opacity-90"
