@@ -1,5 +1,5 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas } from "@react-three/fiber";
 import { Environment, Lightformer, OrbitControls, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -67,33 +67,6 @@ const KIND_DEFAULT: Record<string, string> = {
   waist: "WaistBackAttachment",
   gear: "RightGripAttachment",
 };
-
-// Right arm pivots (the group the arm hangs from).
-// Hanging: pivot at the top of the arm, the arm extends 2 studs straight down.
-// Raised (Roblox R6 tool pose): the shoulder joint sits at y = 3.5 and the arm points forward (-z).
-// With the +90 deg X rotation, the arm's centre ends up at (1.5, 3.5, -0.5) and its tip at (1.5, 3.5, -1.5).
-const ARM_HANGING_PIVOT: [number, number, number] = [1.5, 4, 0];
-const ARM_RAISED_PIVOT: [number, number, number] = [1.5, 3.5, 0.5];
-
-// Where the right hand ends up when the arm is raised forward to hold a gear/tool (tip of the raised arm).
-const HELD_GRIP: [number, number, number] = [1.5, 3.5, -1.5];
-
-// Extra world-space shift applied to held items only. Tune this until the hand sits on the handle:
-// +y slides the item up through the hand (use it if the hand is on the blade), -y slides it down.
-const GRIP_NUDGE: [number, number, number] = [0, 1.2, 0];
-
-// Tilt of held items, in degrees, rotating the item around the hand (world axes: x = character's
-// left/right, y = up, z = front/back; the character faces -z).
-// z: negative leans the tip outward (away from the body), positive leans it toward the body.
-// x: negative leans the tip forward (away from the character's chest), positive leans it backward.
-// y: spins the item around its own vertical axis.
-// Tune these until it matches the Roblox pose.
-const GRIP_TILT_DEG: [number, number, number] = [0, 90, 0];
-
-function attachmentNameFor(acc: LoadedAccessory) {
-  const n = acc.meta?.attachmentName;
-  return n && ATTACH[n] ? n : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
-}
 
 function useFaceTexture(customUrl?: string | null) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
@@ -238,7 +211,10 @@ const SKIN_PATCH = 12;
 // Gives a custom mesh UVs that point into the classic template, the same way the
 // template wraps a plain box: every triangle goes to the front/back/left/right/top/bottom
 // region of the template depending on which way it faces.
-function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
+function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart, mirrorX = false) {
+  // When the mesh is shown mirrored (left arm / left leg), compute the mapping as seen in the
+  // world, so the inner/outer sides and the artwork aren't reversed.
+  const flip = mirrorX ? -1 : 1;
   const g = src.index ? src.toNonIndexed() : src.clone();
   g.computeBoundingBox();
   const bb = g.boundingBox!;
@@ -274,7 +250,7 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
 
   for (let i = 0; i + 2 < pos.count; i += 3) {
     // Average of the three vertex normals decides which template face this triangle uses
-    const nx = nor.getX(i) + nor.getX(i + 1) + nor.getX(i + 2);
+    const nx = (nor.getX(i) + nor.getX(i + 1) + nor.getX(i + 2)) * flip;
     const ny = nor.getY(i) + nor.getY(i + 1) + nor.getY(i + 2);
     const nz = nor.getZ(i) + nor.getZ(i + 1) + nor.getZ(i + 2);
     const ax = Math.abs(nx);
@@ -312,7 +288,7 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
 
     for (let k = 0; k < 3; k++) {
       p.fromBufferAttribute(pos, i + k);
-      const px = (p.x - ctr.x) / (size.x || 1);
+      const px = ((p.x - ctr.x) / (size.x || 1)) * flip;
       const py = (p.y - ctr.y) / (size.y || 1);
       const pz = (p.z - ctr.z) / (size.z || 1);
       let fu = 0;
@@ -346,128 +322,6 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart) {
   }
   g.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   return g;
-}
-
-// ---- Face painted directly onto the head mesh ----
-
-// Size (in world studs) the face image covers on the front of the head.
-// Matches the old 1.1 x 1.1 plane. Change this if the face looks too big or small.
-const FACE_SIZE = 1.1;
-// Size (in canvas pixels) of the reserved skin-colour patch in the face texture's corner
-const FACE_SKIN_PATCH = 16;
-// Triangles whose averaged normal points toward -z by more than this get the face.
-// Closer to -1 = face covers less of the curve; closer to 0 = wraps further around.
-const FACE_NORMAL_Z = -0.35;
-
-// Gives the head mesh UVs so the face image is projected flat onto its front.
-// Front-facing triangles get the projected UVs; everything else points at a
-// skin-coloured patch in the texture's bottom-left corner.
-function projectFaceUVs(src: THREE.BufferGeometry) {
-  const g = src.index ? src.toNonIndexed() : src.clone();
-  g.computeBoundingBox();
-  const ctr = g.boundingBox!.getCenter(new THREE.Vector3());
-  const pos = g.getAttribute("position") as THREE.BufferAttribute;
-  const nor = g.getAttribute("normal") as THREE.BufferAttribute;
-  const uvs = new Float32Array(pos.count * 2);
-  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-  const patch = FACE_SKIN_PATCH / 2 / 512; // centre of the skin patch, in UV space
-
-  for (let i = 0; i + 2 < pos.count; i += 3) {
-    const nz = (nor.getZ(i) + nor.getZ(i + 1) + nor.getZ(i + 2)) / 3;
-    const front = nz < FACE_NORMAL_Z; // the face looks toward -z
-    for (let k = 0; k < 3; k++) {
-      let u = patch;
-      let v = patch;
-      if (front) {
-        // Viewed from the front (-z), screen-right is -x, so u grows as x shrinks
-        u = clamp01(0.5 - (pos.getX(i + k) - ctr.x) / FACE_SIZE);
-        v = clamp01(0.5 + (pos.getY(i + k) - ctr.y) / FACE_SIZE);
-      }
-      uvs[(i + k) * 2] = u;
-      uvs[(i + k) * 2 + 1] = v;
-    }
-  }
-  g.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-  return g;
-}
-
-// Same idea as projectFaceUVs, but for custom head meshes that already have their own UVs
-// (and maybe their own texture). The texture atlas is split in two halves: the left half holds
-// the head's original texture (its UVs are squeezed into u 0..0.5), the right half holds the
-// face on a skin background. Front-facing triangles are pointed at the right half.
-function projectFaceAtlasUVs(src: THREE.BufferGeometry) {
-  const g = src.index ? src.toNonIndexed() : src.clone();
-  g.computeBoundingBox();
-  const ctr = g.boundingBox!.getCenter(new THREE.Vector3());
-  const pos = g.getAttribute("position") as THREE.BufferAttribute;
-  const nor = g.getAttribute("normal") as THREE.BufferAttribute;
-  const oldUv = g.getAttribute("uv") as THREE.BufferAttribute | undefined;
-  const uvs = new Float32Array(pos.count * 2);
-  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-
-  for (let i = 0; i + 2 < pos.count; i += 3) {
-    const nz = (nor.getZ(i) + nor.getZ(i + 1) + nor.getZ(i + 2)) / 3;
-    const front = nz < FACE_NORMAL_Z; // the face looks toward -z
-    for (let k = 0; k < 3; k++) {
-      let u: number;
-      let v: number;
-      if (front) {
-        u = 0.5 + 0.5 * clamp01(0.5 - (pos.getX(i + k) - ctr.x) / FACE_SIZE);
-        v = clamp01(0.5 + (pos.getY(i + k) - ctr.y) / FACE_SIZE);
-      } else {
-        u = (oldUv ? oldUv.getX(i + k) : 0) * 0.5;
-        v = oldUv ? oldUv.getY(i + k) : 0;
-      }
-      uvs[(i + k) * 2] = u;
-      uvs[(i + k) * 2 + 1] = v;
-    }
-  }
-  g.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-  return g;
-}
-
-function FacedHead({
-  geometry,
-  color,
-  face,
-}: {
-  geometry: THREE.BufferGeometry;
-  color: string;
-  face: THREE.Texture | null;
-}) {
-  const faceGeo = useMemo(() => projectFaceUVs(geometry), [geometry]);
-  useEffect(() => () => faceGeo.dispose(), [faceGeo]);
-
-  const tex = useMemo(() => {
-    if (!face?.image) return null;
-    const S = 512;
-    const c = document.createElement("canvas");
-    c.width = c.height = S;
-    const ctx = c.getContext("2d")!;
-    ctx.imageSmoothingEnabled = true;
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, S, S);
-    ctx.drawImage(face.image as CanvasImageSource, 0, 0, S, S);
-    // Guaranteed plain skin patch in the bottom-left corner (UV 0,0 with flipY) for
-    // every triangle that isn't on the front of the face
-    ctx.fillStyle = color;
-    ctx.fillRect(0, S - FACE_SKIN_PATCH, FACE_SKIN_PATCH, FACE_SKIN_PATCH);
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }, [face, color]);
-  useEffect(() => () => tex?.dispose(), [tex]);
-
-  return (
-    <mesh geometry={faceGeo} position={[0, 4.53, 0]} castShadow>
-      <meshStandardMaterial
-        key={tex ? tex.uuid : "none"}
-        map={tex}
-        color={tex ? "#ffffff" : color}
-        roughness={0.55}
-      />
-    </mesh>
-  );
 }
 
 function Part({
@@ -555,25 +409,13 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     const meta = acc.meta;
     // Rows without real 3D positioning data (e.g. flat face images) must not crash the scene
     if (!meta || !meta.attachmentPos) return new THREE.Matrix4();
-    const name = attachmentNameFor(acc);
-    const held = name === "RightGripAttachment";
-    // Held items follow the raised right hand instead of the arm hanging at the side
-    const charPos: [number, number, number] = held
-      ? [HELD_GRIP[0] + GRIP_NUDGE[0], HELD_GRIP[1] + GRIP_NUDGE[1], HELD_GRIP[2] + GRIP_NUDGE[2]]
-      : ATTACH[name] ?? [0, 5.1, 0];
+    const name =
+      meta.attachmentName && ATTACH[meta.attachmentName]
+        ? meta.attachmentName
+        : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
+    const charPos = ATTACH[name] ?? [0, 5.1, 0];
     const charM = new THREE.Matrix4().makeTranslation(...charPos);
-    if (held) {
-      // Tilt around the hand first (world axes), then apply the base grip rotation
-      const tilt = new THREE.Matrix4().makeRotationFromEuler(
-        new THREE.Euler(
-          THREE.MathUtils.degToRad(GRIP_TILT_DEG[0]),
-          THREE.MathUtils.degToRad(GRIP_TILT_DEG[1]),
-          THREE.MathUtils.degToRad(GRIP_TILT_DEG[2]),
-        ),
-      );
-      charM.multiply(tilt);
-      charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
-    }
+    if (name === "RightGripAttachment") charM.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
     const r = (meta.attachmentRot?.length === 9 ? meta.attachmentRot : [1, 0, 0, 0, 1, 0, 0, 0, 1]) as [number, number, number, number, number, number, number, number, number];
     const accM = new THREE.Matrix4().set(
       r[0], r[1], r[2], meta.attachmentPos[0],
@@ -623,14 +465,14 @@ function BodyMesh({
   color,
   part,
   layers = NO_LAYERS,
-  face = null,
+  mirror = false,
 }: {
   acc: LoadedAccessory;
   position: [number, number, number];
   color: string;
   part?: BodyPart; // omit for the head (classic clothing doesn't cover it)
   layers?: Layer[];
-  face?: THREE.Texture | null; // head only: painted directly onto the mesh
+  mirror?: boolean; // show the mesh flipped sideways (left arm / left leg from a right-side upload)
 }) {
   const geometry = useMemo(() => {
     try {
@@ -659,8 +501,8 @@ function BodyMesh({
   }, [part, layers]);
 
   const clothedGeo = useMemo(
-    () => (worn && geometry && part ? projectTemplateUVs(geometry, part) : null),
-    [worn, geometry, part],
+    () => (worn && geometry && part ? projectTemplateUVs(geometry, part, mirror) : null),
+    [worn, geometry, part, mirror],
   );
   useEffect(() => () => clothedGeo?.dispose(), [clothedGeo]);
 
@@ -712,56 +554,17 @@ function BodyMesh({
     };
   }, [acc.texture_data_url]);
 
-  // Head only: paint the face directly onto the custom head mesh
-  const faceGeo = useMemo(
-    () => (!part && face && geometry ? projectFaceAtlasUVs(geometry) : null),
-    [part, face, geometry],
-  );
-  useEffect(() => () => faceGeo?.dispose(), [faceGeo]);
-
-  const faceTex = useMemo(() => {
-    if (!faceGeo || !face?.image) return null;
-    // Wait for the head's own texture (if it has one) so it isn't lost from the atlas
-    if (acc.texture_data_url && !texture) return null;
-    const W = 2048;
-    const H = 1024;
-    const c = document.createElement("canvas");
-    c.width = W;
-    c.height = H;
-    const ctx = c.getContext("2d")!;
-    ctx.imageSmoothingEnabled = true;
-    // Left half: the head's original texture (or plain skin colour)
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, W / 2, H);
-    if (texture?.image) ctx.drawImage(texture.image as CanvasImageSource, 0, 0, W / 2, H);
-    // Right half: the face on a skin background
-    ctx.fillStyle = color;
-    ctx.fillRect(W / 2, 0, W / 2, H);
-    ctx.drawImage(face.image as CanvasImageSource, W / 2, 0, W / 2, H);
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }, [faceGeo, face, texture, color, acc.texture_data_url]);
-  useEffect(() => () => faceTex?.dispose(), [faceTex]);
-
   if (!geometry) return null;
-
-  if (faceGeo && faceTex)
-    return (
-      <mesh key="faced" geometry={faceGeo} position={position} castShadow>
-        <meshStandardMaterial key={faceTex.uuid} map={faceTex} color="#ffffff" roughness={0.55} />
-      </mesh>
-    );
 
   if (worn && clothedGeo && clothTex)
     return (
-      <mesh key="clothed" geometry={clothedGeo} position={position} castShadow>
+      <mesh key="clothed" geometry={clothedGeo} position={position} scale={mirror ? [-1, 1, 1] : [1, 1, 1]} castShadow>
         <meshStandardMaterial key={clothTex.uuid} map={clothTex} color="#ffffff" roughness={0.55} />
       </mesh>
     );
 
   return (
-    <mesh key="plain" geometry={geometry} position={position} castShadow>
+    <mesh key="plain" geometry={geometry} position={position} scale={mirror ? [-1, 1, 1] : [1, 1, 1]} castShadow>
       <meshStandardMaterial
         key={texture ? texture.uuid : "none"}
         map={texture}
@@ -806,27 +609,20 @@ function Character({
   const headGeo = useHeadMesh();
   const body: { head?: LoadedAccessory; torso?: LoadedAccessory; arm?: LoadedAccessory; leg?: LoadedAccessory } = {};
   for (const a of accessories) if (a.meta?.bodyPart && a.mesh_b64) body[a.kind as "head"] = a;
-  // Holding a gear/tool: the right arm is raised straight forward, like in Roblox
-  const holdingTool = accessories.some(
-    (a) =>
-      a.mesh_b64 && a.meta?.attachmentPos && !a.meta?.bodyPart && attachmentNameFor(a) === "RightGripAttachment",
-  );
-  const armPivot = holdingTool ? ARM_RAISED_PIVOT : ARM_HANGING_PIVOT;
-  const armRotX = holdingTool ? Math.PI / 2 : 0;
   return (
-    <group name="avatar">
+    <group>
       {body.head ? (
-        <BodyMesh acc={body.head} position={[0, 4.53, 0]} color={colors.head} face={face} />
+        <BodyMesh acc={body.head} position={[0, 4.53, 0]} color={colors.head} />
       ) : headGeo ? (
-        // Face is painted directly onto the head mesh (no floating plane)
-        <FacedHead geometry={headGeo} color={colors.head} face={face} />
+        <mesh geometry={headGeo} position={[0, 4.53, 0]} castShadow>
+          <meshStandardMaterial color={colors.head} roughness={0.55} />
+        </mesh>
       ) : (
         <RoundedBox args={[1.2, 1.2, 1.2]} radius={0.4} smoothness={16} position={[0, 4.53, 0]} castShadow>
           <meshStandardMaterial color={colors.head} roughness={0.55} />
         </RoundedBox>
       )}
-      {/* Floating plane is only a fallback while the default head mesh is still loading */}
-      {face && !body.head && !headGeo && (
+      {face && (
         <mesh position={[0, 4.53, -0.601]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[1.1, 1.1]} />
           <meshStandardMaterial map={face} transparent roughness={0.55} />
@@ -839,22 +635,18 @@ function Character({
       )}
       {body.arm ? (
         <>
-          <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
-          <group position={armPivot} rotation={[armRotX, 0, 0]}>
-            <BodyMesh acc={body.arm} position={[0, -1, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
-          </group>
+          <BodyMesh acc={body.arm} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} mirror />
+          <BodyMesh acc={body.arm} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
         </>
       ) : (
         <>
           <Part size={[1, 2, 1]} position={[-1.5, 3, 0]} color={colors.left_arm} part="left_arm" layers={layers} />
-          <group position={armPivot} rotation={[armRotX, 0, 0]}>
-            <Part size={[1, 2, 1]} position={[0, -1, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
-          </group>
+          <Part size={[1, 2, 1]} position={[1.5, 3, 0]} color={colors.right_arm} part="right_arm" layers={layers} />
         </>
       )}
       {body.leg ? (
         <>
-          <BodyMesh acc={body.leg} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} />
+          <BodyMesh acc={body.leg} position={[-0.5, 1, 0]} color={colors.left_leg} part="left_leg" layers={layers} mirror />
           <BodyMesh acc={body.leg} position={[0.5, 1, 0]} color={colors.right_leg} part="right_leg" layers={layers} />
         </>
       ) : (
@@ -872,186 +664,49 @@ function Character({
   );
 }
 
-// ---- 2D render (Roblox-style thumbnail) ----
-// The 2D view is a snapshot of the same 3D scene taken from a fixed, slightly tilted camera.
-// The camera sits toward -x (the side of the "left_arm" slot), like Roblox thumbnails.
-const SNAP_YAW = 22; // degrees around the character; raise for a more side-on view, negative to tilt the other way
-const SNAP_PITCH = 6; // degrees above eye level
-const SNAP_FOV = 30;
-const SNAP_SETTLE_MS = 300; // wait this long after the last scene update before capturing
-
-function Snapshotter({ onCapture }: { onCapture: (url: string) => void }) {
-  const { gl, scene, size, invalidate } = useThree();
-  const timer = useRef<number | undefined>(undefined);
-  const cam = useMemo(() => new THREE.PerspectiveCamera(SNAP_FOV, 1, 0.1, 100), []);
-
-  const capture = useCallback(() => {
-    const aspect = size.width / size.height;
-    const t = Math.tan(THREE.MathUtils.degToRad(SNAP_FOV) / 2);
-    const yaw = THREE.MathUtils.degToRad(SNAP_YAW);
-    const pitch = THREE.MathUtils.degToRad(SNAP_PITCH);
-
-    const ground = scene.getObjectByName("ground");
-    const wasVisible = ground?.visible ?? true;
-    if (ground) ground.visible = false; // Roblox thumbnails have no floor shadow
-
-    // Frame whatever the avatar currently looks like (a held sword makes it taller and deeper)
-    scene.updateMatrixWorld(true);
-    const box = new THREE.Box3();
-    const avatar = scene.getObjectByName("avatar");
-    if (avatar) box.setFromObject(avatar);
-    if (box.isEmpty()) box.set(new THREE.Vector3(-2.5, 0, -1), new THREE.Vector3(2.5, 5.2, 1));
-    const center = box.getCenter(new THREE.Vector3());
-    const dir = new THREE.Vector3(
-      -Math.sin(yaw) * Math.cos(pitch),
-      Math.sin(pitch),
-      -Math.cos(yaw) * Math.cos(pitch),
-    );
-    const place = (d: number) => {
-      cam.position.copy(center).addScaledVector(dir, d);
-      cam.lookAt(center);
-      cam.updateMatrixWorld();
-    };
-    cam.aspect = aspect;
-    cam.updateProjectionMatrix();
-    const D0 = 30;
-    place(D0);
-    // Moving the camera back only increases depth, so the distance that fits every
-    // corner of the box is D0 + the largest shortfall.
-    let extra = -Infinity;
-    const v = new THREE.Vector3();
-    for (const x of [box.min.x, box.max.x])
-      for (const y of [box.min.y, box.max.y])
-        for (const z of [box.min.z, box.max.z]) {
-          v.set(x, y, z).applyMatrix4(cam.matrixWorldInverse);
-          extra = Math.max(extra, Math.max(Math.abs(v.x) / (t * aspect), Math.abs(v.y) / t) - -v.z);
-        }
-    place(Math.max(4, (D0 + extra) * 1.06));
-
-    gl.render(scene, cam);
-    // toDataURL must run in the same tick as the render (no preserveDrawingBuffer needed)
-    const url = gl.domElement.toDataURL("image/png");
-
-    if (ground) ground.visible = wasVisible;
-    onCapture(url);
-  }, [cam, gl, scene, size, onCapture]);
-
-  // Every rendered frame (asset loaded, prop changed...) restarts the countdown,
-  // so we only capture once the scene has settled.
-  const schedule = useCallback(() => {
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(capture, SNAP_SETTLE_MS);
-  }, [capture]);
-
-  useFrame(schedule);
-  useEffect(() => {
-    invalidate();
-    schedule();
-    return () => {
-      window.clearTimeout(timer.current);
-      invalidate(); // redraw with the normal camera when leaving 2D mode
-    };
-  }, [invalidate, schedule]);
-
-  return null;
-}
-
 export function Avatar3D({
   colors,
   accessories,
   clothing = [],
   faceUrl = null,
-  defaultView = "2d",
-  onSnapshot,
 }: {
   colors: AvatarColors;
   accessories: LoadedAccessory[];
   clothing?: WornClothing[];
   faceUrl?: string | null;
-  defaultView?: "2d" | "3d";
-  onSnapshot?: (dataUrl: string) => void; // optional: reuse the render as a thumbnail
 }) {
   const controls = useRef<OrbitControlsImpl>(null);
-  const [view, setView] = useState<"2d" | "3d">(defaultView);
-  const [snap, setSnap] = useState<string | null>(null);
-
-  const handleCapture = useCallback(
-    (url: string) => {
-      setSnap(url);
-      onSnapshot?.(url);
-    },
-    [onSnapshot],
-  );
-
-  const switchView = (v: "2d" | "3d") => {
-    if (v === "2d") setSnap(null); // the old image may be stale after editing in 3D
-    setView(v);
-  };
-
-  const tabClass = (active: boolean) =>
-    `px-3 py-1 text-xs font-bold ${active ? "bg-primary text-primary-foreground" : "bg-card hover:bg-accent"}`;
-
   return (
     <div className="relative h-full w-full">
-      {/* The canvas stays mounted in 2D mode (invisible) so it can keep rendering snapshots */}
-      <div className={view === "3d" ? "h-full w-full" : "pointer-events-none absolute inset-0 opacity-0"}>
-        <Canvas shadows dpr={[1, 1.5]} frameloop="demand" camera={{ position: [-3, 4.5, -9], fov: 40 }}>
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[-5, 10, -6]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
-          <Suspense fallback={null}>
-            <Environment resolution={64}>
-              <Lightformer intensity={2} position={[0, 6, -4]} scale={[10, 10, 1]} />
-              <Lightformer intensity={1} position={[5, 2, 2]} rotation-y={-Math.PI / 2} scale={[10, 3, 1]} />
-            </Environment>
-          </Suspense>
-          <Character colors={colors} accessories={accessories} clothing={clothing} faceUrl={faceUrl} />
-          <mesh name="ground" position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[20, 20]} />
-            <shadowMaterial opacity={0.25} />
-          </mesh>
-          <OrbitControls
-            ref={controls}
-            target={[0, 3, 0]}
-            enablePan={false}
-            minDistance={5}
-            maxDistance={16}
-            maxPolarAngle={Math.PI * 0.6}
-          />
-          {view === "2d" && <Snapshotter onCapture={handleCapture} />}
-        </Canvas>
-      </div>
-
-      {view === "2d" &&
-        (snap ? (
-          <img
-            src={snap}
-            alt="Avatar"
-            draggable={false}
-            className="absolute inset-0 h-full w-full select-none object-contain"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-            Rendering…
-          </div>
-        ))}
-
-      <div className="absolute left-2 top-2 flex overflow-hidden rounded-md border border-border">
-        <button onClick={() => switchView("2d")} className={tabClass(view === "2d")}>
-          2D
-        </button>
-        <button onClick={() => switchView("3d")} className={tabClass(view === "3d")}>
-          3D
-        </button>
-      </div>
-
-      {view === "3d" && (
-        <button
-          onClick={() => controls.current?.reset()}
-          className="absolute bottom-2 right-2 rounded-md border border-border bg-card px-2 py-1 text-xs font-bold hover:bg-accent"
-        >
-          Reset camera
-        </button>
-      )}
+      <Canvas shadows dpr={[1, 1.5]} frameloop="demand" camera={{ position: [-3, 4.5, -9], fov: 40 }}>
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[-5, 10, -6]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
+        <Suspense fallback={null}>
+          <Environment resolution={64}>
+            <Lightformer intensity={2} position={[0, 6, -4]} scale={[10, 10, 1]} />
+            <Lightformer intensity={1} position={[5, 2, 2]} rotation-y={-Math.PI / 2} scale={[10, 3, 1]} />
+          </Environment>
+        </Suspense>
+        <Character colors={colors} accessories={accessories} clothing={clothing} faceUrl={faceUrl} />
+        <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[20, 20]} />
+          <shadowMaterial opacity={0.25} />
+        </mesh>
+        <OrbitControls
+          ref={controls}
+          target={[0, 3, 0]}
+          enablePan={false}
+          minDistance={5}
+          maxDistance={16}
+          maxPolarAngle={Math.PI * 0.6}
+        />
+      </Canvas>
+      <button
+        onClick={() => controls.current?.reset()}
+        className="absolute bottom-2 right-2 rounded-md border border-border bg-card px-2 py-1 text-xs font-bold hover:bg-accent"
+      >
+        Reset camera
+      </button>
     </div>
   );
 }
