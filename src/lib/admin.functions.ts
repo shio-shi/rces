@@ -228,27 +228,11 @@ export const adminListItems = createServerFn({ method: "GET" }).handler(async ()
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("items")
-    .select(
-      "id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at, description, is_hidden",
-    )
+    .select("id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at, description")
     .order("created_at", { ascending: false })
     .limit(200);
   return data ?? [];
 });
-
-export const adminSetItemHidden = createServerFn({ method: "POST" })
-  .inputValidator((data: { itemId: string; hidden: boolean }) => data)
-  .handler(async ({ data }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin();
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("items")
-      .update({ is_hidden: data.hidden })
-      .eq("id", data.itemId);
-    if (error) throw new Error(error.message);
-    return { ok: true as const };
-  });
 
 export const adminSetItemRap = createServerFn({ method: "POST" })
   .inputValidator((data: { itemId: string; rap: number }) => data)
