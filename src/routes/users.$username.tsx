@@ -1,12 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
+import { AvatarViewer } from "@/components/AvatarViewer";
 import { ItemCard } from "@/components/ItemCard";
 import { useAuth } from "@/lib/auth";
 import { rpcMessage } from "@/lib/social";
 import type { Item } from "@/lib/format";
+import type { AvatarColors } from "@/components/Avatar3D";
 
 export const Route = createFileRoute("/users/$username")({
   head: () => ({
@@ -80,6 +83,18 @@ function UserPage() {
 
   const refreshRel = () => qc.invalidateQueries({ queryKey: ["relationship"] });
 
+  // Avatar data for the viewer: saved colours, equipped items, and which items the player still owns
+  const avatarData = useMemo(() => {
+    const p = data?.profile as unknown as
+      | { avatar_colors?: Partial<AvatarColors> | null; equipped_items?: string[] | null }
+      | undefined;
+    return {
+      colors: p?.avatar_colors ?? null,
+      equipped: p?.equipped_items ?? [],
+      ownedIds: (data?.items ?? []).map((i) => i.id),
+    };
+  }, [data]);
+
   async function addFriend() {
     const msg = await rpcMessage(await supabase.rpc("send_friend_request", { _target: other! }));
     if (msg !== "ok") toast.error(msg);
@@ -126,8 +141,12 @@ function UserPage() {
     <AppLayout>
       <div className="rb-card p-5">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex h-24 w-24 items-center justify-center rounded bg-surface text-3xl font-bold text-muted-foreground">
-            {data.profile.username.charAt(0).toUpperCase()}
+          <div className="h-[320px] w-[260px] max-w-full shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+            <AvatarViewer
+              colors={avatarData.colors}
+              equipped={avatarData.equipped}
+              ownedIds={avatarData.ownedIds}
+            />
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold">{data.profile.username}</h1>
