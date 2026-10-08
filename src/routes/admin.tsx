@@ -920,6 +920,7 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
       const { parseRobloxMesh, bytesToBase64 } = await import("@/lib/robloxMesh");
 const { normalizeMeshBytes } = await import("@/lib/robloxMeshV7");
 const meta = parseRbxm(await rbxm.arrayBuffer());
+window.prompt("Copy this text and send it to Claude", JSON.stringify(meta));
 let meshB64: string | null = null;
 if (mesh) {
   const bytes = await normalizeMeshBytes(new Uint8Array(await mesh.arrayBuffer()));
