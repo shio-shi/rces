@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { CLASS_LABEL, isLimitedNow, kindLabel, type Item } from "@/lib/format";
 import { RawbuxIcon } from "@/components/RawbuxIcon";
+import { ItemBadge } from "@/components/ItemBadge";
 
 export function ItemThumb({ item, className = "" }: { item: Item; className?: string }) {
   return (
-    <div className={`flex items-center justify-center bg-surface ${className}`}>
+    <div className={`relative flex items-center justify-center bg-surface ${className}`}>
       {item.image_url ? (
         <img
           src={item.image_url}
@@ -15,6 +16,7 @@ export function ItemThumb({ item, className = "" }: { item: Item; className?: st
       ) : (
         <span className="text-xs text-muted-foreground">No image</span>
       )}
+      <ItemBadge cls={item.class} />
     </div>
   );
 }
