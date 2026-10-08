@@ -24,6 +24,7 @@ import {
   adminLogin,
   adminLogout,
   adminRestockItem,
+  adminSetItemHidden,
   adminSetItemRap,
   adminSetItemValue,
   adminSetPromocodeActive,
@@ -90,6 +91,7 @@ type AdminItem = {
   stock: number | null;
   sale_ends_at: string | null;
   description: string;
+  hidden: boolean;
 };
 
 type InventoryRow = {
@@ -124,7 +126,7 @@ function AdminPage() {
 
   const [name, setName] = useState("");
   const [kind, setKind] = useState(KINDS[0]!);
-  const [cls, setCls] = useState<"normal" | "limited" | "limitedu">("normal");
+  const [cls, setCls] = useState<"normal" | "limited" | "limitedu" | "offsale">("normal");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [price, setPrice] = useState("100");
@@ -133,6 +135,7 @@ function AdminPage() {
   const [timerS, setTimerS] = useState("0");
   const [stock, setStock] = useState("");
   const [itemValue, setItemValue] = useState("");
+  const [hidden, setHidden] = useState(false);
 
   const [search, setSearch] = useState("");
   const [user, setUser] = useState<FoundUser | null>(null);
@@ -218,6 +221,7 @@ function AdminPage() {
           timerSeconds: cls === "normal" ? null : Number(timerS) || 0,
           stock: cls !== "normal" && stock.trim() !== "" ? Number(stock) || 0 : null,
           value: itemValue.trim() !== "" ? Number(itemValue) || 0 : null,
+          hidden,
         },
       });
       toast.success("Item published.");
@@ -362,6 +366,7 @@ function AdminPage() {
             <option value="normal">Normal (on sale)</option>
             <option value="limited">Limited</option>
             <option value="limitedu">Limited U</option>
+            <option value="offsale">Offsale</option>
           </select>
           <input
             value={price}
@@ -382,7 +387,7 @@ function AdminPage() {
             <input
               value={stock}
               onChange={(e) => setStock(e.target.value)}
-              placeholder="Stock (leave empty for unlimited)"
+              placeholder={cls === "offsale" ? "Stock (0 + 0 timer = offsale immediately)" : "Stock (leave empty for unlimited)"}
               inputMode="numeric"
               className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
             />
@@ -411,6 +416,14 @@ function AdminPage() {
             </div>
             </>
           )}
+          <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={hidden}
+              onChange={(e) => setHidden(e.target.checked)}
+            />
+            Hide from catalog (still visible here in the admin panel)
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -682,9 +695,15 @@ function AdminPage() {
               <li key={i.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
                 <span className="font-bold">{i.name}</span>
                 <span className="capitalize text-muted-foreground">
-                  {i.kind} · {i.class === "limitedu" ? "Limited U" : i.class} · {i.price.toLocaleString("en-US")} Rawbux
+                  {i.kind} · {i.class === "limitedu" ? "Limited U" : i.class === "offsale" ? "Offsale" : i.class} · {i.price.toLocaleString("en-US")} Rawbux
                   {i.class !== "normal" ? ` · ${i.copies_sold} sold` : ""}
                 </span>
+                {i.hidden && (
+                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                    Hidden
+                  </span>
+                )}
+                <HideToggle item={i} onSaved={reloadItems} />
                 <EditEditor item={i} onSaved={reloadItems} />
                 {BODY_KINDS.includes(i.kind) ? <BodyPartEditor item={i} /> : <AccessoryEditor item={i} />}
                 {i.kind === "face" && <FaceEditor item={i} />}
@@ -702,6 +721,31 @@ function AdminPage() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function HideToggle({ item, onSaved }: { item: AdminItem; onSaved: () => void | Promise<void> }) {
+  const setItemHidden = useServerFn(adminSetItemHidden);
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await setItemHidden({ data: { itemId: item.id, hidden: !item.hidden } });
+          toast.success(item.hidden ? "Item is visible in the catalog." : "Item hidden from the catalog.");
+          await onSaved();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Failed to update item.");
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className="rounded-md border border-border px-3 py-1 text-xs font-bold hover:bg-surface disabled:opacity-50"
+    >
+      {item.hidden ? "Show in catalog" : "Hide from catalog"}
+    </button>
   );
 }
 
