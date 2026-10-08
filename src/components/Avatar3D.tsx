@@ -103,10 +103,11 @@ const BACK_ATTACHMENTS_FACE_BACK = true;
 
 // Extra turn, in degrees around the vertical axis, applied to the character's attachment point for
 // accessories using that attachment. Use it when every accessory on one attachment faces the wrong
-// way. TRIAL: neck accessories (chains, necklaces) currently come out turned to the wrong side, so
-// they get a half turn. If neck accessories look right without it, set this to {} (or 0).
+// way. TRIAL: neck accessories (chains, necklaces) came out turned to the wrong side; 180 turned
+// them to the opposite side, so a quarter turn is being tried. If it turns the wrong way, use -90.
+// If neck accessories look right without it, set this to {} (or 0).
 const ATTACHMENT_EXTRA_TURN_DEG: Record<string, number> = {
-  NeckAttachment: 180,
+  NeckAttachment: 90,
 };
 
 // True when an accessory's own attachment is turned 180 degrees around the vertical axis
