@@ -102,12 +102,18 @@ const RECENTER_MESHPARTS = true;
 const BACK_ATTACHMENTS_FACE_BACK = true;
 
 // Extra turn, in degrees around the vertical axis, applied to the character's attachment point for
-// accessories using that attachment. Use it when every accessory on one attachment faces the wrong
-// way. TRIAL: neck accessories (chains, necklaces) came out turned to the wrong side; 180 turned
-// them to the opposite side, so a quarter turn is being tried. If it turns the wrong way, use -90.
-// If neck accessories look right without it, set this to {} (or 0).
+// MeshPart accessories (isMeshPart) using that attachment. Neck chains and necklaces that are
+// MeshParts came out turned to the wrong side, and a quarter turn fixes them. Classic (non-MeshPart)
+// accessories are not affected. If it turns the wrong way, use 90. To turn it off, set this to {}.
 const ATTACHMENT_EXTRA_TURN_DEG: Record<string, number> = {
   NeckAttachment: -90,
+};
+
+// Extra turn, in degrees, for single accessories that face the wrong way, keyed by the Roblox mesh
+// id of the accessory (the "meshId" in its data). This wins over ATTACHMENT_EXTRA_TURN_DEG above.
+// If an item turns the wrong way, use the opposite sign (90 instead of -90), or try 180.
+const ITEM_EXTRA_TURN_DEG: Record<string, number> = {
+  "4532690725": -90, // Bling Linkmob (neck chain, v3 mesh)
 };
 
 // True when an accessory's own attachment is turned 180 degrees around the vertical axis
@@ -608,7 +614,11 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     ) {
       charM.multiply(new THREE.Matrix4().makeRotationY(Math.PI));
     }
-    const extraTurn = meta.isMeshPart ? ATTACHMENT_EXTRA_TURN_DEG[name] : 0;
+    // Extra turn: a per-item value (by Roblox mesh id) wins; otherwise MeshParts get the
+    // per-attachment value, and classic accessories get none.
+    const meshId = String((meta as unknown as { meshId?: string | number }).meshId ?? "");
+    const itemTurn = meshId ? ITEM_EXTRA_TURN_DEG[meshId] : undefined;
+    const extraTurn = itemTurn ?? (meta.isMeshPart ? ATTACHMENT_EXTRA_TURN_DEG[name] : 0);
     if (extraTurn) charM.multiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(extraTurn)));
     if (held) {
       // Tilt around the hand first (world axes), then apply the base grip rotation
