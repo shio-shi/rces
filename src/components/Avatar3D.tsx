@@ -107,7 +107,7 @@ const BACK_ATTACHMENTS_FACE_BACK = true;
 // them to the opposite side, so a quarter turn is being tried. If it turns the wrong way, use -90.
 // If neck accessories look right without it, set this to {} (or 0).
 const ATTACHMENT_EXTRA_TURN_DEG: Record<string, number> = {
-  NeckAttachment: 90,
+  NeckAttachment: -90,
 };
 
 // True when an accessory's own attachment is turned 180 degrees around the vertical axis
