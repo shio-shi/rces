@@ -101,6 +101,14 @@ const RECENTER_MESHPARTS = true;
 // behaviour if some older back item now looks wrong.
 const BACK_ATTACHMENTS_FACE_BACK = true;
 
+// Extra turn, in degrees around the vertical axis, applied to the character's attachment point for
+// accessories using that attachment. Use it when every accessory on one attachment faces the wrong
+// way. TRIAL: neck accessories (chains, necklaces) currently come out turned to the wrong side, so
+// they get a half turn. If neck accessories look right without it, set this to {} (or 0).
+const ATTACHMENT_EXTRA_TURN_DEG: Record<string, number> = {
+  NeckAttachment: 180,
+};
+
 // True when an accessory's own attachment is turned 180 degrees around the vertical axis
 // (row-major 3x3: x axis flipped, y axis kept, z axis flipped), like the AngelWings.
 function isHalfTurnY(rot: number[] | undefined) {
@@ -599,6 +607,8 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     ) {
       charM.multiply(new THREE.Matrix4().makeRotationY(Math.PI));
     }
+    const extraTurn = ATTACHMENT_EXTRA_TURN_DEG[name];
+    if (extraTurn) charM.multiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(extraTurn)));
     if (held) {
       // Tilt around the hand first (world axes), then apply the base grip rotation
       const tilt = new THREE.Matrix4().makeRotationFromEuler(
