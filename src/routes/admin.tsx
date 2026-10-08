@@ -918,15 +918,16 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
     try {
       const { parseRbxm } = await import("@/lib/rbxm");
       const { parseRobloxMesh, bytesToBase64 } = await import("@/lib/robloxMesh");
-const { normalizeMeshBytes } = await import("@/lib/robloxMeshV7");
-const meta = parseRbxm(await rbxm.arrayBuffer());
+      const { normalizeMeshBytes } = await import("@/lib/robloxMeshV7");
+      const meta = parseRbxm(await rbxm.arrayBuffer());
 
-let meshB64: string | null = null;
-if (mesh) {
-  const bytes = await normalizeMeshBytes(new Uint8Array(await mesh.arrayBuffer()));
-  parseRobloxMesh(bytes);
-  meshB64 = bytesToBase64(bytes);
-}
+      let meshB64: string | null = null;
+      if (mesh) {
+        // item.kind tells the v7 converter what it is converting (the hair correction only applies to hair)
+        const bytes = await normalizeMeshBytes(new Uint8Array(await mesh.arrayBuffer()), item.kind);
+        parseRobloxMesh(bytes);
+        meshB64 = bytesToBase64(bytes);
+      }
       let textureDataUrl: string | null = null;
       if (tex)
         textureDataUrl = await new Promise<string>((res, rej) => {
