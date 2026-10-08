@@ -11,7 +11,10 @@ import {
 // down on v7 hair but not on older accessories, flip this to true.
 const FLIP_V = false;
 
-// v7 meshes came out facing backwards. This turns the mesh 180 degrees around the
+// The two corrections below were tuned for v7 HAIR. They are applied only to hair (and to body
+// part meshes, which don't pass an item kind), never to hats, face accessories, neck items, etc.
+
+// v7 hair came out facing backwards. This turns the mesh 180 degrees around the
 // vertical axis, around the mesh's own center (so it stays in place on the head).
 // Set to false to disable.
 const ROTATE_Y_180 = true;
@@ -58,7 +61,7 @@ function decodeDraco(buffer: ArrayBuffer): Promise<THREE.BufferGeometry> {
   });
 }
 
-async function parseV7(bytes: Uint8Array): Promise<MeshData> {
+async function parseV7(bytes: Uint8Array, applyHairFix: boolean): Promise<MeshData> {
   const { draco, lod0Faces } = readV7Container(bytes);
   // decodeDracoFile transfers the buffer to a worker, so hand it a copy.
   const geo = await decodeDraco(draco.slice().buffer);
@@ -88,7 +91,7 @@ async function parseV7(bytes: Uint8Array): Promise<MeshData> {
     if (n) normals.set(n.array as ArrayLike<number>);
   }
 
-  if (ROTATE_Y_180) {
+  if (applyHairFix && ROTATE_Y_180) {
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     for (let i = 0; i < positions.length; i += 3) {
       minX = Math.min(minX, positions[i]);
@@ -106,7 +109,7 @@ async function parseV7(bytes: Uint8Array): Promise<MeshData> {
     }
   }
 
-  if (OFFSET_X !== 0 || OFFSET_Y !== 0 || OFFSET_Z !== 0) {
+  if (applyHairFix && (OFFSET_X !== 0 || OFFSET_Y !== 0 || OFFSET_Z !== 0)) {
     for (let i = 0; i < positions.length; i += 3) {
       positions[i] += OFFSET_X;
       positions[i + 1] += OFFSET_Y;
@@ -122,11 +125,15 @@ async function parseV7(bytes: Uint8Array): Promise<MeshData> {
  * Call this on the raw mesh bytes at upload time, before storing them.
  * v7 meshes are decoded and re-encoded as a v2 mesh; every other version is
  * returned unchanged. The existing synchronous parseRobloxMesh then reads the result.
+ *
+ * kind: the item's kind (hat, hair, back, ...). The hair-specific rotation and offset are applied
+ * only when kind is "hair", or when no kind is given (body part uploads, which keep the old behaviour).
  */
-export async function normalizeMeshBytes(bytes: Uint8Array): Promise<Uint8Array> {
+export async function normalizeMeshBytes(bytes: Uint8Array, kind?: string): Promise<Uint8Array> {
   const version = getMeshVersion(bytes);
   if (!version) throw new Error("Not a Roblox .mesh file.");
   if (parseInt(version[0], 10) < 6) return bytes;
   if (!version.startsWith("7")) throw new Error(`Mesh version ${version} is not supported.`);
-  return meshDataToV2Bytes(await parseV7(bytes));
+  const applyHairFix = kind === undefined || kind === "hair";
+  return meshDataToV2Bytes(await parseV7(bytes, applyHairFix));
 }
