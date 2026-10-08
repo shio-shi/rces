@@ -32,7 +32,6 @@ function HomePage() {
       const { data } = await supabase
         .from("items")
         .select("*")
-        .eq("hidden", false)
         .order("created_at", { ascending: false })
         .limit(12);
       return (data ?? []) as Item[];
