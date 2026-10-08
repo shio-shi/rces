@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.18"
   }
   public: {
     Tables: {
@@ -148,6 +148,7 @@ export type Database = {
           created_at: string
           creator_id: string | null
           description: string
+          hidden: boolean
           id: string
           image_url: string | null
           kind: Database["public"]["Enums"]["item_kind"]
@@ -164,6 +165,7 @@ export type Database = {
           created_at?: string
           creator_id?: string | null
           description?: string
+          hidden?: boolean
           id?: string
           image_url?: string | null
           kind: Database["public"]["Enums"]["item_kind"]
@@ -180,6 +182,7 @@ export type Database = {
           created_at?: string
           creator_id?: string | null
           description?: string
+          hidden?: boolean
           id?: string
           image_url?: string | null
           kind?: Database["public"]["Enums"]["item_kind"]
@@ -508,7 +511,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       friend_request_status: "pending" | "accepted" | "declined" | "cancelled"
-      item_class: "normal" | "limited" | "limitedu"
+      item_class: "normal" | "limited" | "limitedu" | "offsale"
       item_kind:
         | "hat"
         | "hair"
@@ -656,7 +659,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       friend_request_status: ["pending", "accepted", "declined", "cancelled"],
-      item_class: ["normal", "limited", "limitedu"],
+      item_class: ["normal", "limited", "limitedu", "offsale"],
       item_kind: [
         "hat",
         "hair",
