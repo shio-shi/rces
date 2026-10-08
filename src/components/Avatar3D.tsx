@@ -608,7 +608,7 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     ) {
       charM.multiply(new THREE.Matrix4().makeRotationY(Math.PI));
     }
-    const extraTurn = ATTACHMENT_EXTRA_TURN_DEG[name];
+    const extraTurn = meta.isMeshPart ? ATTACHMENT_EXTRA_TURN_DEG[name] : 0;
     if (extraTurn) charM.multiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(extraTurn)));
     if (held) {
       // Tilt around the hand first (world axes), then apply the base grip rotation
