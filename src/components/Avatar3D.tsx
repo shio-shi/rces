@@ -90,6 +90,10 @@ const GRIP_NUDGE: [number, number, number] = [0, 1.2, 0];
 // Tune these until it matches the Roblox pose.
 const GRIP_TILT_DEG: [number, number, number] = [0, 90, 0];
 
+// MeshPart accessories (usually v7 meshes): Roblox centres these on the middle of the mesh's
+// bounding box, so move the mesh to match. Set to false to go back to placing meshes by their origin.
+const RECENTER_MESHPARTS = true;
+
 function attachmentNameFor(acc: LoadedAccessory) {
   const n = acc.meta?.attachmentName;
   return n && ATTACH[n] ? n : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
@@ -524,11 +528,15 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
       g.setAttribute("uv", new THREE.BufferAttribute(m.uvs, 2));
       g.setIndex(new THREE.BufferAttribute(m.indices, 1));
       g.computeBoundingBox();
+      if (RECENTER_MESHPARTS && acc.meta?.isMeshPart) {
+        const c = g.boundingBox!.getCenter(new THREE.Vector3());
+        g.translate(-c.x, -c.y, -c.z);
+      }
       return g;
     } catch {
       return null;
     }
-  }, [acc.mesh_b64]);
+  }, [acc.mesh_b64, acc.meta?.isMeshPart]);
 
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   useEffect(() => {
