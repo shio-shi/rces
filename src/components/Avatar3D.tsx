@@ -94,6 +94,25 @@ const GRIP_TILT_DEG: [number, number, number] = [0, 90, 0];
 // bounding box, so move the mesh to match. Set to false to go back to placing meshes by their origin.
 const RECENTER_MESHPARTS = true;
 
+// In Roblox the character's back attachments (BodyBack / WaistBack) are turned 180 degrees around
+// the vertical axis, so they point backwards. Accessories made for them (wings, backpacks, capes)
+// carry the same 180 degree turn in their own attachment, and the two cancel out. Without this the
+// item ends up flipped front-to-back and sits inside the body. Set to false to go back to the old
+// behaviour if some older back item now looks wrong.
+const BACK_ATTACHMENTS_FACE_BACK = true;
+
+// True when an accessory's own attachment is turned 180 degrees around the vertical axis
+// (row-major 3x3: x axis flipped, y axis kept, z axis flipped), like the AngelWings.
+function isHalfTurnY(rot: number[] | undefined) {
+  return (
+    !!rot &&
+    rot.length === 9 &&
+    Math.abs(rot[0]! + 1) < 0.01 &&
+    Math.abs(rot[4]! - 1) < 0.01 &&
+    Math.abs(rot[8]! + 1) < 0.01
+  );
+}
+
 function attachmentNameFor(acc: LoadedAccessory) {
   const n = acc.meta?.attachmentName;
   return n && ATTACH[n] ? n : KIND_DEFAULT[acc.kind] ?? "HatAttachment";
@@ -573,6 +592,13 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
       ? [HELD_GRIP[0] + GRIP_NUDGE[0], HELD_GRIP[1] + GRIP_NUDGE[1], HELD_GRIP[2] + GRIP_NUDGE[2]]
       : ATTACH[name] ?? [0, 5.1, 0];
     const charM = new THREE.Matrix4().makeTranslation(...charPos);
+    if (
+      BACK_ATTACHMENTS_FACE_BACK &&
+      (name === "BodyBackAttachment" || name === "WaistBackAttachment") &&
+      isHalfTurnY(meta.attachmentRot as number[] | undefined)
+    ) {
+      charM.multiply(new THREE.Matrix4().makeRotationY(Math.PI));
+    }
     if (held) {
       // Tilt around the hand first (world axes), then apply the base grip rotation
       const tilt = new THREE.Matrix4().makeRotationFromEuler(
