@@ -920,11 +920,18 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
       const { parseRobloxMesh, bytesToBase64 } = await import("@/lib/robloxMesh");
       const { normalizeMeshBytes } = await import("@/lib/robloxMeshV7");
       const meta = parseRbxm(await rbxm.arrayBuffer());
+      const { getMeshVersion } = await import("@/lib/robloxMesh");
 
       let meshB64: string | null = null;
       if (mesh) {
+        const rawBytes = new Uint8Array(await mesh.arrayBuffer());
+        // TEMPORARY DEBUG: remove this line once the accessory placement is sorted out
+        window.prompt(
+          "Copy this text and send it to Claude",
+          JSON.stringify({ kind: item.kind, meshVersion: getMeshVersion(rawBytes), meta }),
+        );
         // item.kind tells the v7 converter what it is converting (the hair correction only applies to hair)
-        const bytes = await normalizeMeshBytes(new Uint8Array(await mesh.arrayBuffer()), item.kind);
+        const bytes = await normalizeMeshBytes(rawBytes, item.kind);
         parseRobloxMesh(bytes);
         meshB64 = bytesToBase64(bytes);
       }
