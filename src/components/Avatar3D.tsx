@@ -280,6 +280,13 @@ const SKIN_PATCH = 12;
 // Lower it if the hips still have gaps; raise it if the shoulder tops look wrong.
 const CAP_DOMINANCE = 0.85;
 
+// Custom torso only: triangles that face sideways (the flared hips) would normally use the
+// template's left/right regions, which most shirts and pants leave blank (the arms cover them),
+// so the hips showed skin. When true, those triangles are projected from the front or back
+// instead (front half uses the front artwork, back half uses the back artwork), so the shirt
+// continues around the hips like it does on the blocky body. Set to false to go back to the old mapping.
+const TORSO_SIDES_FROM_FRONT_BACK = true;
+
 // Gives a custom mesh UVs that point into the classic template, the same way the
 // template wraps a plain box: every triangle goes to the front/back/left/right/top/bottom
 // region of the template depending on which way it faces.
@@ -333,6 +340,18 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart, mirrorX =
     if (ay / nLen >= CAP_DOMINANCE) face = ny >= 0 ? 2 : 3; // really facing up / down
     else if (ax >= az) face = nx >= 0 ? 0 : 1; // sides
     else face = nz >= 0 ? 4 : 5; // back / front
+
+    // Torso sides (flared hips): use the front artwork for the front half, the back artwork for the back half
+    let reroutedSide = false;
+    if (TORSO_SIDES_FROM_FRONT_BACK && part === "torso" && (face === 0 || face === 1)) {
+      let sz = 0;
+      for (let k = 0; k < 3; k++) {
+        p.fromBufferAttribute(pos, i + k);
+        sz += p.z;
+      }
+      face = (sz / 3 - ctr.z) / (size.z || 1) > 0 ? 4 : 5;
+      reroutedSide = true;
+    }
     const r = rects[face]!;
 
     // Is this triangle part of the neck stub? (torso only)
@@ -374,6 +393,9 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart, mirrorX =
         case 4: fu = 0.5 + px; ft = 0.5 + py; break;
         default: fu = 0.5 - px; ft = 0.5 + py; break;
       }
+      // Rerouted hip sides sit at the very edge of the front/back region: stay a hair inside it so
+      // the edge pixels don't blend with the empty gap next to the region
+      if (reroutedSide) fu = Math.min(0.99, Math.max(0.01, fu));
       let X = r[0] + clamp01(fu) * r[2];
       let Y = r[1] + (1 - clamp01(ft)) * r[3];
       if (part === "torso" && face === 2) {
@@ -741,51 +763,18 @@ function BodyMesh({
   const clothTex = useMemo(() => {
     if (!worn || !part) return null;
     const S = 2;
-    const W = TEMPLATE_W * S;
-    const H = TEMPLATE_H * S;
-
-    // 1) Draw the clothing layers on their own transparent canvas
-    const lc = document.createElement("canvas");
-    lc.width = W;
-    lc.height = H;
-    const lx = lc.getContext("2d")!;
-    lx.imageSmoothingEnabled = true;
-    for (const l of worn.use) lx.drawImage(l.img, 0, 0, W, H);
-    if (worn.tshirt) {
-      const r = templateRects(part)[5];
-      lx.drawImage(worn.tshirt.img, r[0], r[1], r[2], r[3], r[0] * S, r[1] * S, r[2] * S, r[3] * S);
-    }
-
-    // 2) Torso only: the template's left/right faces are usually blank (the arms cover them),
-    //    but a flared custom torso shows them at the hips. Fill any transparent pixels there by
-    //    stretching the neighbouring front/back edge column sideways.
-    if (part === "torso") {
-      const snap = document.createElement("canvas");
-      snap.width = W;
-      snap.height = H;
-      snap.getContext("2d")!.drawImage(lc, 0, 0);
-      lx.globalCompositeOperation = "destination-over"; // only paints where nothing is drawn yet
-      const stretch = (srcX: number, dstX: number) =>
-        lx.drawImage(snap, srcX * S, 74 * S, S, 128 * S, dstX * S, 74 * S, 32 * S, 128 * S);
-      // +x side (x 165..228): front half is next to the front's left edge, back half next to the back's right edge
-      stretch(231, 197);
-      stretch(554, 165);
-      // -x side (x 361..424): front half is next to the front's right edge, back half next to the back's left edge
-      stretch(358, 361);
-      stretch(427, 393);
-      lx.globalCompositeOperation = "source-over";
-    }
-
-    // 3) Final atlas: skin colour underneath, clothing on top
     const c = document.createElement("canvas");
-    c.width = W;
-    c.height = H;
+    c.width = TEMPLATE_W * S;
+    c.height = TEMPLATE_H * S;
     const ctx = c.getContext("2d")!;
     ctx.imageSmoothingEnabled = true;
     ctx.fillStyle = color;
-    ctx.fillRect(0, 0, W, H);
-    ctx.drawImage(lc, 0, 0);
-
+    ctx.fillRect(0, 0, c.width, c.height);
+    for (const l of worn.use) ctx.drawImage(l.img, 0, 0, c.width, c.height);
+    if (worn.tshirt) {
+      const r = templateRects(part)[5];
+      ctx.drawImage(worn.tshirt.img, r[0], r[1], r[2], r[3], r[0] * S, r[1] * S, r[2] * S, r[3] * S);
+    }
     if (part === "torso") {
       // Plain skin patch in an unused corner of the template, used for the neck
       ctx.fillStyle = color;
