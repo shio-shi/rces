@@ -86,14 +86,21 @@ function UserPage() {
   // Avatar data for the viewer: saved colours, equipped items, and which items the player still owns
   const avatarData = useMemo(() => {
     const p = data?.profile as unknown as
-      | { avatar_colors?: Partial<AvatarColors> | null; equipped_items?: string[] | null }
+      | {
+          avatar_colors?: Partial<AvatarColors> | null;
+          equipped_items?: string[] | null;
+          inventory_private?: boolean;
+        }
       | undefined;
+    // For someone else's private inventory we can't see what they own (the list comes back
+    // empty), so skip the ownership filter and show what they have equipped.
+    const ownedHidden = !!p?.inventory_private && me?.id !== data?.profile.id;
     return {
       colors: p?.avatar_colors ?? null,
       equipped: p?.equipped_items ?? [],
-      ownedIds: (data?.items ?? []).map((i) => i.id),
+      ownedIds: ownedHidden ? undefined : (data?.items ?? []).map((i) => i.id),
     };
-  }, [data]);
+  }, [data, me?.id]);
 
   async function addFriend() {
     const msg = await rpcMessage(await supabase.rpc("send_friend_request", { _target: other! }));
