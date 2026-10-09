@@ -741,18 +741,51 @@ function BodyMesh({
   const clothTex = useMemo(() => {
     if (!worn || !part) return null;
     const S = 2;
+    const W = TEMPLATE_W * S;
+    const H = TEMPLATE_H * S;
+
+    // 1) Draw the clothing layers on their own transparent canvas
+    const lc = document.createElement("canvas");
+    lc.width = W;
+    lc.height = H;
+    const lx = lc.getContext("2d")!;
+    lx.imageSmoothingEnabled = true;
+    for (const l of worn.use) lx.drawImage(l.img, 0, 0, W, H);
+    if (worn.tshirt) {
+      const r = templateRects(part)[5];
+      lx.drawImage(worn.tshirt.img, r[0], r[1], r[2], r[3], r[0] * S, r[1] * S, r[2] * S, r[3] * S);
+    }
+
+    // 2) Torso only: the template's left/right faces are usually blank (the arms cover them),
+    //    but a flared custom torso shows them at the hips. Fill any transparent pixels there by
+    //    stretching the neighbouring front/back edge column sideways.
+    if (part === "torso") {
+      const snap = document.createElement("canvas");
+      snap.width = W;
+      snap.height = H;
+      snap.getContext("2d")!.drawImage(lc, 0, 0);
+      lx.globalCompositeOperation = "destination-over"; // only paints where nothing is drawn yet
+      const stretch = (srcX: number, dstX: number) =>
+        lx.drawImage(snap, srcX * S, 74 * S, S, 128 * S, dstX * S, 74 * S, 32 * S, 128 * S);
+      // +x side (x 165..228): front half is next to the front's left edge, back half next to the back's right edge
+      stretch(231, 197);
+      stretch(554, 165);
+      // -x side (x 361..424): front half is next to the front's right edge, back half next to the back's left edge
+      stretch(358, 361);
+      stretch(427, 393);
+      lx.globalCompositeOperation = "source-over";
+    }
+
+    // 3) Final atlas: skin colour underneath, clothing on top
     const c = document.createElement("canvas");
-    c.width = TEMPLATE_W * S;
-    c.height = TEMPLATE_H * S;
+    c.width = W;
+    c.height = H;
     const ctx = c.getContext("2d")!;
     ctx.imageSmoothingEnabled = true;
     ctx.fillStyle = color;
-    ctx.fillRect(0, 0, c.width, c.height);
-    for (const l of worn.use) ctx.drawImage(l.img, 0, 0, c.width, c.height);
-    if (worn.tshirt) {
-      const r = templateRects(part)[5];
-      ctx.drawImage(worn.tshirt.img, r[0], r[1], r[2], r[3], r[0] * S, r[1] * S, r[2] * S, r[3] * S);
-    }
+    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(lc, 0, 0);
+
     if (part === "torso") {
       // Plain skin patch in an unused corner of the template, used for the neck
       ctx.fillStyle = color;
