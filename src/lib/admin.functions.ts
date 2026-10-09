@@ -513,3 +513,28 @@ export const adminSetFace = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+export const adminSetAccessoryTurn = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string; turnDeg: number | null }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    if (data.turnDeg !== null && (!Number.isFinite(data.turnDeg) || Math.abs(data.turnDeg) > 360))
+      throw new Error("Turn must be between -360 and 360 degrees.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error: readError } = await supabaseAdmin
+      .from("item_accessories")
+      .select("meta")
+      .eq("item_id", data.itemId)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!row) throw new Error("This item has no 3D model yet. Upload one first.");
+    const meta: Record<string, unknown> = { ...((row.meta as Record<string, unknown> | null) ?? {}) };
+    if (data.turnDeg === null) delete meta["extraTurnDeg"];
+    else meta["extraTurnDeg"] = data.turnDeg;
+    const { error } = await supabaseAdmin
+      .from("item_accessories")
+      .update({ meta: meta as never, updated_at: new Date().toISOString() })
+      .eq("item_id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
