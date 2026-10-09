@@ -9,6 +9,7 @@ import {
   adminDeleteItem,
   adminEditItem,
   adminSetAccessory,
+  adminSetAccessoryTurn,
   adminSetFace,
   adminSetBodyPart,
   adminRemoveAccessory,
@@ -897,8 +898,10 @@ function ValueEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void |
 
 function AccessoryEditor({ item }: { item: AdminItem }) {
   const setAcc = useServerFn(adminSetAccessory);
+  const setTurn = useServerFn(adminSetAccessoryTurn);
   const removeAcc = useServerFn(adminRemoveAccessory);
   const [open, setOpen] = useState(false);
+  const [turn, setTurnText] = useState("");
   const [rbxm, setRbxm] = useState<File | null>(null);
   const [mesh, setMesh] = useState<File | null>(null);
   const [tex, setTex] = useState<File | null>(null);
@@ -909,6 +912,25 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
         3D model
       </button>
     );
+  // Saves (or clears) an extra turn for this item. It only changes the saved data, no re-upload needed.
+  const applyTurn = async (clear: boolean) => {
+    const deg = Number(turn);
+    if (!clear && (turn.trim() === "" || Number.isNaN(deg))) {
+      toast.error("Enter a number of degrees, for example 180.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await setTurn({ data: { itemId: item.id, turnDeg: clear ? null : deg } });
+      toast.success(clear ? "Turn cleared." : "Turn saved.");
+      if (clear) setTurnText("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the turn.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const upload = async () => {
     if (!rbxm) {
       toast.error("Choose a .rbxm file first.");
@@ -920,14 +942,11 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
       const { parseRobloxMesh, bytesToBase64 } = await import("@/lib/robloxMesh");
       const { normalizeMeshBytes } = await import("@/lib/robloxMeshV7");
       const meta = parseRbxm(await rbxm.arrayBuffer());
-      const { getMeshVersion } = await import("@/lib/robloxMesh");
 
       let meshB64: string | null = null;
       if (mesh) {
-        const rawBytes = new Uint8Array(await mesh.arrayBuffer());
-        
         // item.kind tells the v7 converter what it is converting (the hair correction only applies to hair)
-        const bytes = await normalizeMeshBytes(rawBytes, item.kind);
+        const bytes = await normalizeMeshBytes(new Uint8Array(await mesh.arrayBuffer()), item.kind);
         parseRobloxMesh(bytes);
         meshB64 = bytesToBase64(bytes);
       }
@@ -954,6 +973,33 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
       <label>Accessory (.rbxm / .rbxmx) <input type="file" accept=".rbxm,.rbxmx" className={field} onChange={(e) => setRbxm(e.target.files?.[0] ?? null)} /></label>
       <label>Mesh (.mesh, optional) <input type="file" accept=".mesh" className={field} onChange={(e) => setMesh(e.target.files?.[0] ?? null)} /></label>
       <label>Texture (image, optional) <input type="file" accept="image/*" className={field} onChange={(e) => setTex(e.target.files?.[0] ?? null)} /></label>
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+        <span className="font-bold">Turn (degrees)</span>
+        <input
+          value={turn}
+          onChange={(e) => setTurnText(e.target.value)}
+          placeholder="e.g. 180"
+          inputMode="numeric"
+          className="h-7 w-24 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
+        />
+        <button
+          disabled={busy}
+          onClick={() => applyTurn(false)}
+          className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
+        >
+          Save turn
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => applyTurn(true)}
+          className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
+        >
+          Clear turn
+        </button>
+        <span className="text-muted-foreground">
+          Turns this item around where it is worn (try 180 if it faces backwards). The item needs a 3D model already.
+        </span>
+      </div>
       <div className="flex gap-2">
         <button disabled={busy} onClick={upload} className="rounded-md bg-primary px-3 py-1 font-bold text-primary-foreground disabled:opacity-50">{busy ? "Uploading..." : "Upload"}</button>
         <button
