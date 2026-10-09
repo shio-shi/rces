@@ -274,6 +274,12 @@ const NECK_WIDE = 0.55;
 // Size (in template pixels) of the reserved skin-colour patch in the top-left corner of the atlas
 const SKIN_PATCH = 12;
 
+// A triangle only counts as "top" or "bottom" when its normal points up/down at least this much
+// (0..1, 1 = exactly vertical). Sloped surfaces like the flared hips of a custom torso
+// are mapped to the sides / front / back instead of the blank top and bottom of the template.
+// Lower it if the hips still have gaps; raise it if the shoulder tops look wrong.
+const CAP_DOMINANCE = 0.85;
+
 // Gives a custom mesh UVs that point into the classic template, the same way the
 // template wraps a plain box: every triangle goes to the front/back/left/right/top/bottom
 // region of the template depending on which way it faces.
@@ -322,10 +328,11 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart, mirrorX =
     const ax = Math.abs(nx);
     const ay = Math.abs(ny);
     const az = Math.abs(nz);
+    const nLen = Math.hypot(nx, ny, nz) || 1;
     let face: number;
-    if (ax >= ay && ax >= az) face = nx >= 0 ? 0 : 1;
-    else if (ay >= az) face = ny >= 0 ? 2 : 3;
-    else face = nz >= 0 ? 4 : 5;
+    if (ay / nLen >= CAP_DOMINANCE) face = ny >= 0 ? 2 : 3; // really facing up / down
+    else if (ax >= az) face = nx >= 0 ? 0 : 1; // sides
+    else face = nz >= 0 ? 4 : 5; // back / front
     const r = rects[face]!;
 
     // Is this triangle part of the neck stub? (torso only)
