@@ -112,6 +112,7 @@ const ATTACHMENT_EXTRA_TURN_DEG: Record<string, number> = {
 // Extra turn, in degrees, for single accessories that face the wrong way, keyed by the Roblox mesh
 // id of the accessory (the "meshId" in its data). This wins over ATTACHMENT_EXTRA_TURN_DEG above.
 // If an item turns the wrong way, use the opposite sign (90 instead of -90), or try 180.
+// A turn set in the admin panel (the "Turn (degrees)" box on an item's 3D model) wins over both.
 const ITEM_EXTRA_TURN_DEG: Record<string, number> = {
   "4532690725": -90, // Bling Linkmob (neck chain, v3 mesh)
 };
@@ -614,11 +615,15 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     ) {
       charM.multiply(new THREE.Matrix4().makeRotationY(Math.PI));
     }
-    // Extra turn: a per-item value (by Roblox mesh id) wins; otherwise MeshParts get the
-    // per-attachment value, and classic accessories get none.
+    // Extra turn: a value set in the admin panel (stored on the item) wins, then a per-item value
+    // by Roblox mesh id, then MeshParts get the per-attachment value, and classic accessories none.
+    const adminTurn = (meta as unknown as { extraTurnDeg?: unknown }).extraTurnDeg;
     const meshId = String((meta as unknown as { meshId?: string | number }).meshId ?? "");
     const itemTurn = meshId ? ITEM_EXTRA_TURN_DEG[meshId] : undefined;
-    const extraTurn = itemTurn ?? (meta.isMeshPart ? ATTACHMENT_EXTRA_TURN_DEG[name] : 0);
+    const extraTurn =
+      typeof adminTurn === "number"
+        ? adminTurn
+        : itemTurn ?? (meta.isMeshPart ? ATTACHMENT_EXTRA_TURN_DEG[name] : 0);
     if (extraTurn) charM.multiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(extraTurn)));
     if (held) {
       // Tilt around the hand first (world axes), then apply the base grip rotation
