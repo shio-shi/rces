@@ -14,12 +14,12 @@ import type { AvatarColors } from "@/components/Avatar3D";
 export const Route = createFileRoute("/users/$username")({
   head: () => ({
     meta: [
-      { title: "User Profile — Rawblox" },
-      { name: "description", content: "View a Rawblox player's profile and their collection." },
-      { property: "og:title", content: "User Profile — Rawblox" },
+      { title: "User Profile — Rawrion Economy Simulator" },
+      { name: "description", content: "View a RECS player's profile and their collection." },
+      { property: "og:title", content: "User Profile — Rawrion Economy Simulator" },
       {
         property: "og:description",
-        content: "View a Rawblox player's profile and their collection.",
+        content: "View a RECS player's profile and their collection.",
       },
     ],
   }),
