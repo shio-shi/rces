@@ -12,12 +12,12 @@ import { CLASS_LABEL, formatCountdown, isLimitedNow, kindLabel, num, type Item }
 export const Route = createFileRoute("/item/$itemId")({
   head: () => ({
     meta: [
-      { title: "Item — Rawblox" },
-      { name: "description", content: "View this Rawblox item, its owners, resellers and value." },
-      { property: "og:title", content: "Item — Rawblox" },
+      { title: "Item — Rawrion Economy Simulator" },
+      { name: "description", content: "View this RECS item, its owners, resellers and value." },
+      { property: "og:title", content: "Item — Rawrion Economy Simulator" },
       {
         property: "og:description",
-        content: "View this Rawblox item, its owners, resellers and value.",
+        content: "View this RECS item, its owners, resellers and value.",
       },
     ],
   }),
