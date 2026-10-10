@@ -9,15 +9,15 @@ import type { Item } from "@/lib/format";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Rawblox — Home" },
+      { title: "Rawrion Economy Simulator — Home" },
       {
         name: "description",
-        content: "Your Rawblox home: newest catalog items, your Rawbux and your collection.",
+        content: "Your RECS home: newest catalog items, your Rawribux and your collection.",
       },
-      { property: "og:title", content: "Rawblox — Home" },
+      { property: "og:title", content: "Rawrion Economy Simulator — Home" },
       {
         property: "og:description",
-        content: "Your Rawblox home: newest catalog items, your Rawbux and your collection.",
+        content: "Your RECS home: newest catalog items, your Rawribux and your collection.",
       },
     ],
   }),
