@@ -8,6 +8,7 @@ import { ItemThumb } from "@/components/ItemCard";
 import { RawbuxIcon } from "@/components/RawbuxIcon";
 import { useAuth } from "@/lib/auth";
 import { CLASS_LABEL, formatCountdown, isLimitedNow, kindLabel, num, type Item } from "@/lib/format";
+import { isUuid, itemSlug } from "@/lib/slug";
 
 export const Route = createFileRoute("/item/$itemId")({
   head: () => ({
@@ -33,6 +34,7 @@ type Owner = {
 };
 
 function ItemPage() {
+  // The link part after /item/: either the item's name (Eerie-Pumpkin-Head) or, for older links, its id
   const { itemId } = Route.useParams();
   const { profile, refresh } = useAuth();
   const qc = useQueryClient();
@@ -48,12 +50,36 @@ function ItemPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["item", itemId],
     queryFn: async () => {
-      const { data: item } = await supabase.from("items").select("*").eq("id", itemId).maybeSingle();
+      let item: Item | null = null;
+      if (isUuid(itemId)) {
+        // Old-style link with the item's id
+        const { data: row } = await supabase.from("items").select("*").eq("id", itemId).maybeSingle();
+        item = (row as Item | null) ?? null;
+      } else {
+        // Name link: find items whose name has the same words in the same order, then keep the
+        // one whose readable link matches exactly (oldest first if two items share a name)
+        const parts = itemId
+          .split("-")
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .map((p) => p.replace(/[\\%_]/g, "\\$&"));
+        if (parts.length > 0) {
+          const { data: rows } = await supabase
+            .from("items")
+            .select("*")
+            .ilike("name", `%${parts.join("%")}%`)
+            .order("created_at", { ascending: true })
+            .limit(50);
+          const wanted = itemId.toLowerCase();
+          item = ((rows ?? []) as Item[]).find((r) => itemSlug(r.name).toLowerCase() === wanted) ?? null;
+        }
+      }
       if (!item) return null;
+      const realId = item.id;
       const { data: owned } = await supabase
         .from("user_items")
         .select("id, user_id, serial, sale_price")
-        .eq("item_id", itemId)
+        .eq("item_id", realId)
         .order("serial", { ascending: true });
       const ids = [...new Set((owned ?? []).map((o) => o.user_id))];
       const { data: profs } = ids.length
@@ -73,7 +99,7 @@ function ItemPage() {
           .maybeSingle();
         creator = c?.username ?? "Unknown";
       }
-      return { item: item as Item, owners, creator };
+      return { item, owners, creator };
     },
   });
 
@@ -106,7 +132,7 @@ function ItemPage() {
     if (buying) return;
     setBuying(true);
     try {
-      const { data: res, error } = await supabase.rpc("buy_item", { _item_id: itemId });
+      const { data: res, error } = await supabase.rpc("buy_item", { _item_id: item.id });
       if (error) {
         toast.error(error.message);
         return;
