@@ -113,6 +113,8 @@ const ATTACHMENT_EXTRA_TURN_DEG: Record<string, number> = {
 // id of the accessory (the "meshId" in its data). This wins over ATTACHMENT_EXTRA_TURN_DEG above.
 // If an item turns the wrong way, use the opposite sign (90 instead of -90), or try 180.
 // A turn set in the admin panel (the "Turn (degrees)" box on an item's 3D model) wins over both.
+// A move set in the admin panel (the "Move" boxes on an item's 3D model) is saved on the item as
+// meta.extraMove and shifts the item in studs from the avatar's own point of view.
 const ITEM_EXTRA_TURN_DEG: Record<string, number> = {
   "4532690725": -90, // Bling Linkmob (neck chain, v3 mesh)
 };
@@ -632,10 +634,20 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     if (!meta || !meta.attachmentPos) return new THREE.Matrix4();
     const name = attachmentNameFor(acc);
     const held = name === "RightGripAttachment";
+    // Extra move saved on the item from the admin panel, in studs from the avatar's own point of
+    // view: right (+x), up (+y), forward (the avatar faces -z, so forward is -z). It is added to the
+    // attachment point itself, so it stays "forward / right / up" on the avatar whatever turn the item has.
+    const savedMove = (meta as unknown as { extraMove?: { forward?: unknown; right?: unknown; up?: unknown } })
+      .extraMove;
+    const stud = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    const moveX = stud(savedMove?.right);
+    const moveY = stud(savedMove?.up);
+    const moveZ = -stud(savedMove?.forward);
     // Held items follow the raised right hand instead of the arm hanging at the side
-    const charPos: [number, number, number] = held
+    const basePos: [number, number, number] = held
       ? [HELD_GRIP[0] + GRIP_NUDGE[0], HELD_GRIP[1] + GRIP_NUDGE[1], HELD_GRIP[2] + GRIP_NUDGE[2]]
       : ATTACH[name] ?? [0, 5.1, 0];
+    const charPos: [number, number, number] = [basePos[0] + moveX, basePos[1] + moveY, basePos[2] + moveZ];
     const charM = new THREE.Matrix4().makeTranslation(...charPos);
     if (
       BACK_ATTACHMENTS_FACE_BACK &&
