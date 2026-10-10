@@ -10,12 +10,12 @@ import { num, type Item } from "@/lib/format";
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "My Profile — Rawblox" },
-      { name: "description", content: "Your Rawblox profile, description and collection." },
-      { property: "og:title", content: "My Profile — Rawblox" },
+      { title: "My Profile — Rawrion Economy Simulator" },
+      { name: "description", content: "Your RECS profile, description and collection." },
+      { property: "og:title", content: "My Profile — Rawrion Economy Simulator" },
       {
         property: "og:description",
-        content: "Your Rawblox profile, description and collection.",
+        content: "Your RECS profile, description and collection.",
       },
     ],
   }),
