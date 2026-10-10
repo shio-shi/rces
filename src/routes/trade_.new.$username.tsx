@@ -12,10 +12,10 @@ import { isLimitedNow, type Item } from "@/lib/format";
 export const Route = createFileRoute("/trade_/new/$username")({
   head: () => ({
     meta: [
-      { title: "Send a Trade — Rawblox" },
-      { name: "description", content: "Build a trade offer with another Rawblox player." },
-      { property: "og:title", content: "Send a Trade — Rawblox" },
-      { property: "og:description", content: "Build a trade offer with another Rawblox player." },
+      { title: "Send a Trade — Rawrion Economy Simulator" },
+      { name: "description", content: "Build a trade offer with another RECS player." },
+      { property: "og:title", content: "Send a Trade — Rawrion Economy Simulator" },
+      { property: "og:description", content: "Build a trade offer with another RECS player." },
     ],
   }),
   component: NewTradePage,
