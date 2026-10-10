@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { CLASS_LABEL, isLimitedNow, kindLabel, type Item } from "@/lib/format";
 import { RawbuxIcon } from "@/components/RawbuxIcon";
 import { ItemBadge } from "@/components/ItemBadge";
+import { itemSlug } from "@/lib/slug";
 
 export function ItemThumb({ item, className = "" }: { item: Item; className?: string }) {
   return (
@@ -36,7 +37,8 @@ export function ItemCard({
   return (
     <Link
       to="/item/$itemId"
-      params={{ itemId: item.id }}
+      // Readable link from the item's name; falls back to the id if the name has no letters or numbers
+      params={{ itemId: itemSlug(item.name) || item.id }}
       className="rb-card group overflow-hidden transition-shadow hover:shadow-md"
     >
       <ItemThumb item={item} className="aspect-square" />
