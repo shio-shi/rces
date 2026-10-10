@@ -12,12 +12,12 @@ import type { Item } from "@/lib/format";
 export const Route = createFileRoute("/trade")({
   head: () => ({
     meta: [
-      { title: "Trades — Rawblox" },
-      { name: "description", content: "Inbound, outbound, completed and inactive Rawblox trades." },
-      { property: "og:title", content: "Trades — Rawblox" },
+      { title: "Trades — Rawrion Economy Simulator" },
+      { name: "description", content: "Inbound, outbound, completed and inactive RECS trades." },
+      { property: "og:title", content: "Trades — Rawrion Economy Simulator" },
       {
         property: "og:description",
-        content: "Inbound, outbound, completed and inactive Rawblox trades.",
+        content: "Inbound, outbound, completed and inactive RECS trades.",
       },
     ],
   }),
