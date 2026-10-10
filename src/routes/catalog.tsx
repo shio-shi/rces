@@ -11,15 +11,15 @@ import { CLOTHING_KINDS } from "@/lib/clothing";
 export const Route = createFileRoute("/catalog")({
   head: () => ({
     meta: [
-      { title: "Catalog — Rawblox" },
+      { title: "Catalog — Rawrion Economy Simulator" },
       {
         name: "description",
-        content: "Browse every hat, hair, face and gear item on Rawblox, including limiteds.",
+        content: "Browse every hat, hair, face and gear item on RECS, including limiteds.",
       },
-      { property: "og:title", content: "Catalog — Rawblox" },
+      { property: "og:title", content: "Catalog — Rawrion Economy Simulator" },
       {
         property: "og:description",
-        content: "Browse every hat, hair, face and gear item on Rawblox, including limiteds.",
+        content: "Browse every hat, hair, face and gear item on RECS, including limiteds.",
       },
     ],
   }),
