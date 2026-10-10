@@ -10,6 +10,7 @@ import {
   adminEditItem,
   adminSetAccessory,
   adminSetAccessoryTurn,
+  adminSetAccessoryMove,
   adminSetFace,
   adminSetBodyPart,
   adminRemoveAccessory,
@@ -899,9 +900,13 @@ function ValueEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void |
 function AccessoryEditor({ item }: { item: AdminItem }) {
   const setAcc = useServerFn(adminSetAccessory);
   const setTurn = useServerFn(adminSetAccessoryTurn);
+  const setMove = useServerFn(adminSetAccessoryMove);
   const removeAcc = useServerFn(adminRemoveAccessory);
   const [open, setOpen] = useState(false);
   const [turn, setTurnText] = useState("");
+  const [moveForward, setMoveForward] = useState("");
+  const [moveRight, setMoveRight] = useState("");
+  const [moveUp, setMoveUp] = useState("");
   const [rbxm, setRbxm] = useState<File | null>(null);
   const [mesh, setMesh] = useState<File | null>(null);
   const [tex, setTex] = useState<File | null>(null);
@@ -926,6 +931,33 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
       if (clear) setTurnText("");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save the turn.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Saves (or clears) an extra move for this item, in studs from the avatar's own point of view.
+  // A blank box counts as 0. It only changes the saved data, no re-upload needed.
+  const applyMove = async (clear: boolean) => {
+    const num = (s: string) => (s.trim() === "" ? 0 : Number(s));
+    const forward = num(moveForward);
+    const right = num(moveRight);
+    const up = num(moveUp);
+    if (!clear && (Number.isNaN(forward) || Number.isNaN(right) || Number.isNaN(up))) {
+      toast.error("Enter numbers only, for example 0.5 or -1.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await setMove({ data: { itemId: item.id, move: clear ? null : { forward, right, up } } });
+      toast.success(clear ? "Move cleared." : "Move saved.");
+      if (clear) {
+        setMoveForward("");
+        setMoveRight("");
+        setMoveUp("");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the move.");
     } finally {
       setBusy(false);
     }
@@ -968,6 +1000,8 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
     }
   };
   const field = "text-xs file:mr-2 file:rounded file:border file:border-border file:bg-card file:px-2 file:py-0.5";
+  const moveInput =
+    "h-7 w-20 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary";
   return (
     <div className="flex w-full flex-col gap-2 rounded-md border border-border p-2 text-xs">
       <label>Accessory (.rbxm / .rbxmx) <input type="file" accept=".rbxm,.rbxmx" className={field} onChange={(e) => setRbxm(e.target.files?.[0] ?? null)} /></label>
@@ -998,6 +1032,59 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
         </button>
         <span className="text-muted-foreground">
           Turns this item around where it is worn (try 180 if it faces backwards). The item needs a 3D model already.
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+        <span className="font-bold">Move (studs)</span>
+        <label className="flex items-center gap-1">
+          Forward
+          <input
+            value={moveForward}
+            onChange={(e) => setMoveForward(e.target.value)}
+            placeholder="0"
+            inputMode="decimal"
+            className={moveInput}
+          />
+        </label>
+        <label className="flex items-center gap-1">
+          Right
+          <input
+            value={moveRight}
+            onChange={(e) => setMoveRight(e.target.value)}
+            placeholder="0"
+            inputMode="decimal"
+            className={moveInput}
+          />
+        </label>
+        <label className="flex items-center gap-1">
+          Up
+          <input
+            value={moveUp}
+            onChange={(e) => setMoveUp(e.target.value)}
+            placeholder="0"
+            inputMode="decimal"
+            className={moveInput}
+          />
+        </label>
+        <button
+          disabled={busy}
+          onClick={() => applyMove(false)}
+          className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
+        >
+          Save move
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => applyMove(true)}
+          className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
+        >
+          Clear move
+        </button>
+        <span className="w-full text-muted-foreground">
+          Moves this item on the avatar, from the avatar's own point of view. Use negative numbers to go the other
+          way: forward -0.5 moves it back, right -0.5 moves it to the left, up -0.5 moves it down. One stud is the
+          width of the avatar's arm. Start with small steps like 0.1 to 0.5. Saving replaces the old values, and
+          blank boxes count as 0.
         </span>
       </div>
       <div className="flex gap-2">
