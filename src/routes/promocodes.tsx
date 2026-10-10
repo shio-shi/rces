@@ -9,12 +9,12 @@ import { rpcMessage } from "@/lib/social";
 export const Route = createFileRoute("/promocodes")({
   head: () => ({
     meta: [
-      { title: "Promocodes — Rawblox" },
-      { name: "description", content: "Redeem Rawblox promocodes for free items and Rawbux." },
-      { property: "og:title", content: "Promocodes — Rawblox" },
+      { title: "Promocodes — Rawrion Economy Simulator" },
+      { name: "description", content: "Redeem RECS promocodes for free items and Rawribux." },
+      { property: "og:title", content: "Promocodes — Rawrion Economy Simulator" },
       {
         property: "og:description",
-        content: "Redeem Rawblox promocodes for free items and Rawbux.",
+        content: "Redeem RECS promocodes for free items and Rawribux.",
       },
     ],
   }),
