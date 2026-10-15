@@ -9,7 +9,7 @@ import {
   adminDeleteItem,
   adminEditItem,
   adminSetAccessory,
-  adminSetAccessoryTurn,
+  adminSetAccessoryRotation,
   adminSetAccessoryMove,
   adminSetFace,
   adminSetBodyPart,
@@ -899,14 +899,8 @@ function ValueEditor({ item, onSaved }: { item: AdminItem; onSaved: () => void |
 
 function AccessoryEditor({ item }: { item: AdminItem }) {
   const setAcc = useServerFn(adminSetAccessory);
-  const setTurn = useServerFn(adminSetAccessoryTurn);
-  const setMove = useServerFn(adminSetAccessoryMove);
   const removeAcc = useServerFn(adminRemoveAccessory);
   const [open, setOpen] = useState(false);
-  const [turn, setTurnText] = useState("");
-  const [moveForward, setMoveForward] = useState("");
-  const [moveRight, setMoveRight] = useState("");
-  const [moveUp, setMoveUp] = useState("");
   const [rbxm, setRbxm] = useState<File | null>(null);
   const [mesh, setMesh] = useState<File | null>(null);
   const [tex, setTex] = useState<File | null>(null);
@@ -917,52 +911,6 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
         3D model
       </button>
     );
-  // Saves (or clears) an extra turn for this item. It only changes the saved data, no re-upload needed.
-  const applyTurn = async (clear: boolean) => {
-    const deg = Number(turn);
-    if (!clear && (turn.trim() === "" || Number.isNaN(deg))) {
-      toast.error("Enter a number of degrees, for example 180.");
-      return;
-    }
-    setBusy(true);
-    try {
-      await setTurn({ data: { itemId: item.id, turnDeg: clear ? null : deg } });
-      toast.success(clear ? "Turn cleared." : "Turn saved.");
-      if (clear) setTurnText("");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save the turn.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // Saves (or clears) an extra move for this item, in studs from the avatar's own point of view.
-  // A blank box counts as 0. It only changes the saved data, no re-upload needed.
-  const applyMove = async (clear: boolean) => {
-    const num = (s: string) => (s.trim() === "" ? 0 : Number(s));
-    const forward = num(moveForward);
-    const right = num(moveRight);
-    const up = num(moveUp);
-    if (!clear && (Number.isNaN(forward) || Number.isNaN(right) || Number.isNaN(up))) {
-      toast.error("Enter numbers only, for example 0.5 or -1.");
-      return;
-    }
-    setBusy(true);
-    try {
-      await setMove({ data: { itemId: item.id, move: clear ? null : { forward, right, up } } });
-      toast.success(clear ? "Move cleared." : "Move saved.");
-      if (clear) {
-        setMoveForward("");
-        setMoveRight("");
-        setMoveUp("");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save the move.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const upload = async () => {
     if (!rbxm) {
       toast.error("Choose a .rbxm file first.");
@@ -1000,93 +948,13 @@ function AccessoryEditor({ item }: { item: AdminItem }) {
     }
   };
   const field = "text-xs file:mr-2 file:rounded file:border file:border-border file:bg-card file:px-2 file:py-0.5";
-  const moveInput =
-    "h-7 w-20 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary";
   return (
     <div className="flex w-full flex-col gap-2 rounded-md border border-border p-2 text-xs">
       <label>Accessory (.rbxm / .rbxmx) <input type="file" accept=".rbxm,.rbxmx" className={field} onChange={(e) => setRbxm(e.target.files?.[0] ?? null)} /></label>
       <label>Mesh (.mesh, optional) <input type="file" accept=".mesh" className={field} onChange={(e) => setMesh(e.target.files?.[0] ?? null)} /></label>
       <label>Texture (image, optional) <input type="file" accept="image/*" className={field} onChange={(e) => setTex(e.target.files?.[0] ?? null)} /></label>
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
-        <span className="font-bold">Turn (degrees)</span>
-        <input
-          value={turn}
-          onChange={(e) => setTurnText(e.target.value)}
-          placeholder="e.g. 180"
-          inputMode="numeric"
-          className="h-7 w-24 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary"
-        />
-        <button
-          disabled={busy}
-          onClick={() => applyTurn(false)}
-          className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
-        >
-          Save turn
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => applyTurn(true)}
-          className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
-        >
-          Clear turn
-        </button>
-        <span className="text-muted-foreground">
-          Turns this item around where it is worn (try 180 if it faces backwards). The item needs a 3D model already.
-        </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
-        <span className="font-bold">Move (studs)</span>
-        <label className="flex items-center gap-1">
-          Forward
-          <input
-            value={moveForward}
-            onChange={(e) => setMoveForward(e.target.value)}
-            placeholder="0"
-            inputMode="decimal"
-            className={moveInput}
-          />
-        </label>
-        <label className="flex items-center gap-1">
-          Right
-          <input
-            value={moveRight}
-            onChange={(e) => setMoveRight(e.target.value)}
-            placeholder="0"
-            inputMode="decimal"
-            className={moveInput}
-          />
-        </label>
-        <label className="flex items-center gap-1">
-          Up
-          <input
-            value={moveUp}
-            onChange={(e) => setMoveUp(e.target.value)}
-            placeholder="0"
-            inputMode="decimal"
-            className={moveInput}
-          />
-        </label>
-        <button
-          disabled={busy}
-          onClick={() => applyMove(false)}
-          className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
-        >
-          Save move
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => applyMove(true)}
-          className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
-        >
-          Clear move
-        </button>
-        <span className="w-full text-muted-foreground">
-          Moves this item on the avatar, from the avatar's own point of view. Use negative numbers to go the other
-          way: forward -0.5 moves it back, right -0.5 moves it to the left, up -0.5 moves it down. One stud is the
-          width of the avatar's arm. Start with small steps like 0.1 to 0.5. Saving replaces the old values, and
-          blank boxes count as 0.
-        </span>
-      </div>
+      <RotateEditor itemId={item.id} />
+      <MoveEditor itemId={item.id} />
       <div className="flex gap-2">
         <button disabled={busy} onClick={upload} className="rounded-md bg-primary px-3 py-1 font-bold text-primary-foreground disabled:opacity-50">{busy ? "Uploading..." : "Upload"}</button>
         <button
@@ -1151,6 +1019,7 @@ try {
     <div className="flex w-full flex-col gap-2 rounded-md border border-border p-2 text-xs">
       <label>Body part ({item.kind}) mesh (.mesh) <input type="file" accept=".mesh" className={field} onChange={(e) => setMesh(e.target.files?.[0] ?? null)} /></label>
       <label>Texture (image, optional — otherwise uses skin colour) <input type="file" accept="image/*" className={field} onChange={(e) => setTex(e.target.files?.[0] ?? null)} /></label>
+      <MoveEditor itemId={item.id} />
       <div className="flex gap-2">
         <button disabled={busy} onClick={upload} className="rounded-md bg-primary px-3 py-1 font-bold text-primary-foreground disabled:opacity-50">{busy ? "Uploading..." : "Upload"}</button>
         <button
@@ -1249,6 +1118,154 @@ function FaceEditor({ item }: { item: AdminItem }) {
           Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+// Moves an item (accessory or body part) from where it normally sits, saved on the item.
+// right/up/forward are in studs from the character's point of view; negative numbers go the other way.
+function MoveEditor({ itemId }: { itemId: string }) {
+  const setMove = useServerFn(adminSetAccessoryMove);
+  const [right, setRight] = useState("");
+  const [up, setUp] = useState("");
+  const [forward, setForward] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const toNum = (s: string) => (s.trim() === "" ? 0 : Number(s));
+
+  const save = async (clear: boolean) => {
+    const move: [number, number, number] | null = clear ? null : [toNum(right), toNum(up), toNum(forward)];
+    if (move && move.some((v) => Number.isNaN(v))) {
+      toast.error("Enter numbers only, for example 0.5 or -1.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await setMove({ data: { itemId, move } });
+      toast.success(clear ? "Move cleared." : "Move saved.");
+      if (clear) {
+        setRight("");
+        setUp("");
+        setForward("");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the move.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const box =
+    "h-7 w-20 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+      <span className="font-bold">Move (studs)</span>
+      <label className="flex items-center gap-1">
+        Right (+) / left (−)
+        <input value={right} onChange={(e) => setRight(e.target.value)} placeholder="0" inputMode="decimal" className={box} />
+      </label>
+      <label className="flex items-center gap-1">
+        Up (+) / down (−)
+        <input value={up} onChange={(e) => setUp(e.target.value)} placeholder="0" inputMode="decimal" className={box} />
+      </label>
+      <label className="flex items-center gap-1">
+        Forward (+) / back (−)
+        <input value={forward} onChange={(e) => setForward(e.target.value)} placeholder="0" inputMode="decimal" className={box} />
+      </label>
+      <button
+        disabled={busy}
+        onClick={() => save(false)}
+        className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
+      >
+        Save move
+      </button>
+      <button
+        disabled={busy}
+        onClick={() => save(true)}
+        className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
+      >
+        Clear move
+      </button>
+      <span className="text-muted-foreground">
+        Small steps work best (0.1 to 0.5). Saving replaces any earlier move. The item needs a 3D model already.
+      </span>
+    </div>
+  );
+}
+
+// Turns an item around where it is worn, on all three axes, saved on the item.
+// Values are degrees from the character's point of view; negative numbers turn the other way.
+function RotateEditor({ itemId }: { itemId: string }) {
+  const setRotation = useServerFn(adminSetAccessoryRotation);
+  const [turnLeft, setTurnLeft] = useState("");
+  const [tiltForward, setTiltForward] = useState("");
+  const [leanRight, setLeanRight] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const toNum = (s: string) => (s.trim() === "" ? 0 : Number(s));
+
+  const save = async (clear: boolean) => {
+    // Stored as [tilt forward, turn left, lean right]
+    const rot: [number, number, number] | null = clear
+      ? null
+      : [toNum(tiltForward), toNum(turnLeft), toNum(leanRight)];
+    if (rot && rot.some((v) => Number.isNaN(v))) {
+      toast.error("Enter numbers only, for example 90 or -45.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await setRotation({ data: { itemId, rot } });
+      toast.success(clear ? "Rotation cleared." : "Rotation saved.");
+      if (clear) {
+        setTurnLeft("");
+        setTiltForward("");
+        setLeanRight("");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the rotation.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const box =
+    "h-7 w-20 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+      <span className="font-bold">Rotate (degrees)</span>
+      <label className="flex items-center gap-1">
+        Turn left (+) / right (−)
+        <input value={turnLeft} onChange={(e) => setTurnLeft(e.target.value)} placeholder="0" inputMode="decimal" className={box} />
+      </label>
+      <label className="flex items-center gap-1">
+        Tilt forward (+) / back (−)
+        <input value={tiltForward} onChange={(e) => setTiltForward(e.target.value)} placeholder="0" inputMode="decimal" className={box} />
+      </label>
+      <label className="flex items-center gap-1">
+        Lean right (+) / left (−)
+        <input value={leanRight} onChange={(e) => setLeanRight(e.target.value)} placeholder="0" inputMode="decimal" className={box} />
+      </label>
+      <button
+        disabled={busy}
+        onClick={() => save(false)}
+        className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
+      >
+        Save rotation
+      </button>
+      <button
+        disabled={busy}
+        onClick={() => save(true)}
+        className="rounded-md border border-border px-3 py-1 font-bold hover:bg-surface disabled:opacity-50"
+      >
+        Clear rotation
+      </button>
+      <span className="text-muted-foreground">
+        Turn spins it around the vertical axis (try 180 if it faces backwards), tilt nods it forward or back, lean tips it
+        sideways. Saving replaces any earlier rotation and the automatic turn. The item needs a 3D model already.
+      </span>
     </div>
   );
 }
