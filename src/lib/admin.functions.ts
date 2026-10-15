@@ -581,3 +581,33 @@ export const adminSetAccessoryMove = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+export const adminSetAccessoryRotation = createServerFn({ method: "POST" })
+  .inputValidator((data: { itemId: string; rot: [number, number, number] | null }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    if (
+      data.rot !== null &&
+      (!Array.isArray(data.rot) ||
+        data.rot.length !== 3 ||
+        data.rot.some((v) => typeof v !== "number" || !Number.isFinite(v) || Math.abs(v) > 360))
+    )
+      throw new Error("Each rotation value must be a number between -360 and 360.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error: readError } = await supabaseAdmin
+      .from("item_accessories")
+      .select("meta")
+      .eq("item_id", data.itemId)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!row) throw new Error("This item has no 3D model yet. Upload one first.");
+    const meta: Record<string, unknown> = { ...((row.meta as Record<string, unknown> | null) ?? {}) };
+    if (data.rot === null) delete meta["extraRotDeg"];
+    else meta["extraRotDeg"] = data.rot;
+    const { error } = await supabaseAdmin
+      .from("item_accessories")
+      .update({ meta: meta as never, updated_at: new Date().toISOString() })
+      .eq("item_id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
