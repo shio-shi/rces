@@ -113,8 +113,6 @@ const ATTACHMENT_EXTRA_TURN_DEG: Record<string, number> = {
 // id of the accessory (the "meshId" in its data). This wins over ATTACHMENT_EXTRA_TURN_DEG above.
 // If an item turns the wrong way, use the opposite sign (90 instead of -90), or try 180.
 // A turn set in the admin panel (the "Turn (degrees)" box on an item's 3D model) wins over both.
-// A move set in the admin panel (the "Move" boxes on an item's 3D model) is saved on the item as
-// meta.extraMove and shifts the item in studs from the avatar's own point of view.
 const ITEM_EXTRA_TURN_DEG: Record<string, number> = {
   "4532690725": -90, // Bling Linkmob (neck chain, v3 mesh)
 };
@@ -276,19 +274,6 @@ const NECK_WIDE = 0.55;
 // Size (in template pixels) of the reserved skin-colour patch in the top-left corner of the atlas
 const SKIN_PATCH = 12;
 
-// A triangle only counts as "top" or "bottom" when its normal points up/down at least this much
-// (0..1, 1 = exactly vertical). Sloped surfaces like the flared hips of a custom torso
-// are mapped to the sides / front / back instead of the blank top and bottom of the template.
-// Lower it if the hips still have gaps; raise it if the shoulder tops look wrong.
-const CAP_DOMINANCE = 0.85;
-
-// Custom torso only: triangles that face sideways (the flared hips) would normally use the
-// template's left/right regions, which most shirts and pants leave blank (the arms cover them),
-// so the hips showed skin. When true, those triangles are projected from the front or back
-// instead (front half uses the front artwork, back half uses the back artwork), so the shirt
-// continues around the hips like it does on the blocky body. Set to false to go back to the old mapping.
-const TORSO_SIDES_FROM_FRONT_BACK = true;
-
 // Gives a custom mesh UVs that point into the classic template, the same way the
 // template wraps a plain box: every triangle goes to the front/back/left/right/top/bottom
 // region of the template depending on which way it faces.
@@ -337,23 +322,10 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart, mirrorX =
     const ax = Math.abs(nx);
     const ay = Math.abs(ny);
     const az = Math.abs(nz);
-    const nLen = Math.hypot(nx, ny, nz) || 1;
     let face: number;
-    if (ay / nLen >= CAP_DOMINANCE) face = ny >= 0 ? 2 : 3; // really facing up / down
-    else if (ax >= az) face = nx >= 0 ? 0 : 1; // sides
-    else face = nz >= 0 ? 4 : 5; // back / front
-
-    // Torso sides (flared hips): use the front artwork for the front half, the back artwork for the back half
-    let reroutedSide = false;
-    if (TORSO_SIDES_FROM_FRONT_BACK && part === "torso" && (face === 0 || face === 1)) {
-      let sz = 0;
-      for (let k = 0; k < 3; k++) {
-        p.fromBufferAttribute(pos, i + k);
-        sz += p.z;
-      }
-      face = (sz / 3 - ctr.z) / (size.z || 1) > 0 ? 4 : 5;
-      reroutedSide = true;
-    }
+    if (ax >= ay && ax >= az) face = nx >= 0 ? 0 : 1;
+    else if (ay >= az) face = ny >= 0 ? 2 : 3;
+    else face = nz >= 0 ? 4 : 5;
     const r = rects[face]!;
 
     // Is this triangle part of the neck stub? (torso only)
@@ -395,9 +367,6 @@ function projectTemplateUVs(src: THREE.BufferGeometry, part: BodyPart, mirrorX =
         case 4: fu = 0.5 + px; ft = 0.5 + py; break;
         default: fu = 0.5 - px; ft = 0.5 + py; break;
       }
-      // Rerouted hip sides sit at the very edge of the front/back region: stay a hair inside it so
-      // the edge pixels don't blend with the empty gap next to the region
-      if (reroutedSide) fu = Math.min(0.99, Math.max(0.01, fu));
       let X = r[0] + clamp01(fu) * r[2];
       let Y = r[1] + (1 - clamp01(ft)) * r[3];
       if (part === "torso" && face === 2) {
@@ -634,20 +603,10 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     if (!meta || !meta.attachmentPos) return new THREE.Matrix4();
     const name = attachmentNameFor(acc);
     const held = name === "RightGripAttachment";
-    // Extra move saved on the item from the admin panel, in studs from the avatar's own point of
-    // view: right (+x), up (+y), forward (the avatar faces -z, so forward is -z). It is added to the
-    // attachment point itself, so it stays "forward / right / up" on the avatar whatever turn the item has.
-    const savedMove = (meta as unknown as { extraMove?: { forward?: unknown; right?: unknown; up?: unknown } })
-      .extraMove;
-    const stud = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
-    const moveX = stud(savedMove?.right);
-    const moveY = stud(savedMove?.up);
-    const moveZ = -stud(savedMove?.forward);
     // Held items follow the raised right hand instead of the arm hanging at the side
-    const basePos: [number, number, number] = held
+    const charPos: [number, number, number] = held
       ? [HELD_GRIP[0] + GRIP_NUDGE[0], HELD_GRIP[1] + GRIP_NUDGE[1], HELD_GRIP[2] + GRIP_NUDGE[2]]
       : ATTACH[name] ?? [0, 5.1, 0];
-    const charPos: [number, number, number] = [basePos[0] + moveX, basePos[1] + moveY, basePos[2] + moveZ];
     const charM = new THREE.Matrix4().makeTranslation(...charPos);
     if (
       BACK_ATTACHMENTS_FACE_BACK &&
@@ -659,10 +618,18 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
     // Extra turn: a value set in the admin panel (stored on the item) wins, then a per-item value
     // by Roblox mesh id, then MeshParts get the per-attachment value, and classic accessories none.
     const adminTurn = (meta as unknown as { extraTurnDeg?: unknown }).extraTurnDeg;
+    // Rotation on all three axes set in the admin panel, in degrees as [tilt forward, turn left,
+    // lean right] from the character's point of view. When present it replaces the automatic turn.
+    const rotRaw = (meta as unknown as { extraRotDeg?: unknown }).extraRotDeg;
+    const adminRot =
+      Array.isArray(rotRaw) && rotRaw.length === 3 && rotRaw.every((v) => typeof v === "number" && Number.isFinite(v))
+        ? (rotRaw as [number, number, number])
+        : null;
     const meshId = String((meta as unknown as { meshId?: string | number }).meshId ?? "");
     const itemTurn = meshId ? ITEM_EXTRA_TURN_DEG[meshId] : undefined;
-    const extraTurn =
-      typeof adminTurn === "number"
+    const extraTurn = adminRot
+      ? 0
+      : typeof adminTurn === "number"
         ? adminTurn
         : itemTurn ?? (meta.isMeshPart ? ATTACHMENT_EXTRA_TURN_DEG[name] : 0);
     if (extraTurn) charM.multiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(extraTurn)));
@@ -701,7 +668,34 @@ function Accessory({ acc }: { acc: LoadedAccessory }) {
       new THREE.Quaternion(),
       s,
     );
-    return handle.multiply(local);
+    const placed = handle.multiply(local);
+    if (adminRot) {
+      // Turn the whole item around where it is worn (the attachment point), using the character's
+      // own directions: the character faces -z, forward tilt lowers the top toward -z, lean right
+      // tips the top toward +x, and a positive turn swings the front toward the character's left.
+      const rotation = new THREE.Matrix4().makeRotationFromEuler(
+        new THREE.Euler(
+          -THREE.MathUtils.degToRad(adminRot[0]),
+          THREE.MathUtils.degToRad(adminRot[1]),
+          -THREE.MathUtils.degToRad(adminRot[2]),
+          "YXZ",
+        ),
+      );
+      const [px, py, pz] = charPos;
+      const about = new THREE.Matrix4()
+        .makeTranslation(px, py, pz)
+        .multiply(rotation)
+        .multiply(new THREE.Matrix4().makeTranslation(-px, -py, -pz));
+      placed.premultiply(about);
+    }
+    // Move set in the admin panel, in studs as [right, up, forward] from the character's point of
+    // view (the character faces -z, so forward is -z and right is +x). Applied last, in world
+    // space, so it isn't affected by how the item is turned.
+    const move = (meta as unknown as { extraMove?: unknown }).extraMove;
+    if (Array.isArray(move) && move.length === 3 && move.every((v) => typeof v === "number" && Number.isFinite(v))) {
+      placed.premultiply(new THREE.Matrix4().makeTranslation(move[0] as number, move[1] as number, -(move[2] as number)));
+    }
+    return placed;
   }, [acc, geometry]);
 
   if (!geometry) return null;
@@ -856,22 +850,35 @@ function BodyMesh({
 
   const scale: [number, number, number] = mirror ? [-1, 1, 1] : [1, 1, 1];
 
+  // Move set in the admin panel, in studs as [right, up, forward] from the character's point of
+  // view. The mirrored left arm / left leg move the opposite way sideways, so "right" always
+  // means "away from the body" for arms and legs.
+  const mv = (acc.meta as unknown as { extraMove?: unknown } | undefined)?.extraMove;
+  const finalPos: [number, number, number] =
+    Array.isArray(mv) && mv.length === 3 && mv.every((v) => typeof v === "number" && Number.isFinite(v))
+      ? [
+          position[0] + (mirror ? -1 : 1) * (mv[0] as number),
+          position[1] + (mv[1] as number),
+          position[2] - (mv[2] as number),
+        ]
+      : position;
+
   if (faceGeo && faceTex)
     return (
-      <mesh key="faced" geometry={faceGeo} position={position} castShadow>
+      <mesh key="faced" geometry={faceGeo} position={finalPos} castShadow>
         <meshStandardMaterial key={faceTex.uuid} map={faceTex} color="#ffffff" roughness={0.55} />
       </mesh>
     );
 
   if (worn && clothedGeo && clothTex)
     return (
-      <mesh key="clothed" geometry={clothedGeo} position={position} scale={scale} castShadow>
+      <mesh key="clothed" geometry={clothedGeo} position={finalPos} scale={scale} castShadow>
         <meshStandardMaterial key={clothTex.uuid} map={clothTex} color="#ffffff" roughness={0.55} />
       </mesh>
     );
 
   return (
-    <mesh key="plain" geometry={geometry} position={position} scale={scale} castShadow>
+    <mesh key="plain" geometry={geometry} position={finalPos} scale={scale} castShadow>
       <meshStandardMaterial
         key={texture ? texture.uuid : "none"}
         map={texture}
