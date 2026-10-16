@@ -617,3 +617,22 @@ export const adminSetAccessoryRotation = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+export const adminListAllItemNames = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("./admin.server");
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const all: { id: string; name: string }[] = [];
+  const PAGE = 1000; // the database returns at most 1000 rows per request, so fetch in chunks
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("items")
+      .select("id, name")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    all.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return all;
+});
