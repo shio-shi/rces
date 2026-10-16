@@ -222,17 +222,23 @@ export const adminSetPromocodeActive = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-export const adminListItems = createServerFn({ method: "GET" }).handler(async () => {
-  const { requireAdmin } = await import("./admin.server");
-  await requireAdmin();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("items")
-    .select("id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at, description")
-    .order("created_at", { ascending: false })
-    .limit(200);
-  return data ?? [];
-});
+export const adminListItems = createServerFn({ method: "POST" })
+  .inputValidator((data: { offset?: number; limit?: number } | undefined) => data ?? {})
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin();
+    const offset = Math.max(0, Math.floor(data.offset ?? 0));
+    const limit = Math.min(1000, Math.max(1, Math.floor(data.limit ?? 200)));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("items")
+      .select("id, name, kind, class, price, copies_sold, rap, value, stock, sale_ends_at, description")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + limit - 1);
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
 
 export const adminSetItemRap = createServerFn({ method: "POST" })
   .inputValidator((data: { itemId: string; rap: number }) => data)
