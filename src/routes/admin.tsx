@@ -22,6 +22,7 @@ import {
   adminResetRawbux,
   adminResetPassword,
   adminListItems,
+  adminListAllItemNames,
   adminListPromocodes,
   adminLogin,
   adminLogout,
@@ -116,6 +117,7 @@ function AdminPage() {
   const createCode = useServerFn(adminCreatePromocode);
   const setCodeActive = useServerFn(adminSetPromocodeActive);
   const listItems = useServerFn(adminListItems);
+  const listAllNames = useServerFn(adminListAllItemNames);
   const deleteItem = useServerFn(adminDeleteItem);
   const getInventory = useServerFn(adminGetInventory);
   const giveItem = useServerFn(adminGiveItem);
@@ -160,6 +162,12 @@ function AdminPage() {
     setCodes((await listCodes()) as Promocode[]);
   }, [listCodes]);
 
+  // Every item's id and name, for the "give item" and promocode dropdowns (not paged)
+  const [allItemNames, setAllItemNames] = useState<{ id: string; name: string }[]>([]);
+  const reloadNames = useCallback(async () => {
+    setAllItemNames((await listAllNames()) as { id: string; name: string }[]);
+  }, [listAllNames]);
+
   // The item list loads in pages. loadedRef remembers how many items are shown, so reloading
   // after an edit or delete keeps everything that was already loaded.
   const ITEM_PAGE = 50;
@@ -173,7 +181,8 @@ function AdminPage() {
     const rows = (await listItems({ data: { offset: 0, limit: limit + 1 } })) as AdminItem[];
     setHasMoreItems(rows.length > limit);
     setItemOptions(rows.slice(0, limit));
-  }, [listItems]);
+    void reloadNames();
+  }, [listItems, reloadNames]);
 
   const loadMoreItems = async () => {
     setLoadingMore(true);
@@ -574,18 +583,13 @@ function AdminPage() {
                 Inventory ({inventory.length})
               </p>
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <select
+                <ItemSelect
+                  items={allItemNames}
                   value={giveItemId}
-                  onChange={(e) => setGiveItemId(e.target.value)}
-                  className="h-9 max-w-64 rounded-md border border-input bg-card px-3 text-sm"
-                >
-                  <option value="">Pick an item to give...</option>
-                  {itemOptions.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setGiveItemId}
+                  placeholder="Pick an item to give..."
+                  selectClassName="h-9 max-w-64 rounded-md border border-input bg-card px-3 text-sm"
+                />
                 <button
                   onClick={doGiveItem}
                   disabled={!giveItemId}
@@ -645,18 +649,13 @@ function AdminPage() {
             placeholder="Rawbux reward"
             className="h-9 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
           />
-          <select
+          <ItemSelect
+            items={allItemNames}
             value={codeItem}
-            onChange={(e) => setCodeItem(e.target.value)}
-            className="h-9 rounded-md border border-input bg-card px-3 text-sm"
-          >
-            <option value="">No item reward</option>
-            {itemOptions.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-              </option>
-            ))}
-          </select>
+            onChange={setCodeItem}
+            placeholder="No item reward"
+            selectClassName="h-9 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-sm"
+          />
           <input
             value={codeMax}
             onChange={(e) => setCodeMax(e.target.value)}
@@ -1313,6 +1312,54 @@ function RotateEditor({ itemId }: { itemId: string }) {
         Turn spins it around the vertical axis (try 180 if it faces backwards), tilt nods it forward or back, lean tips it
         sideways. Saving replaces any earlier rotation and the automatic turn. The item needs a 3D model already.
       </span>
+    </div>
+  );
+}
+
+// A search box plus a dropdown of items. Typing in the box narrows the dropdown to matching names
+// (or ids); the currently picked item always stays in the list.
+function ItemSelect({
+  items,
+  value,
+  onChange,
+  placeholder,
+  selectClassName,
+}: {
+  items: { id: string; name: string }[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder: string;
+  selectClassName: string;
+}) {
+  const [q, setQ] = useState("");
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? items.filter((i) => i.name.toLowerCase().includes(term) || i.id.toLowerCase().startsWith(term))
+    : items;
+  const selected = value ? items.find((i) => i.id === value) : undefined;
+  const shown = selected && !filtered.some((i) => i.id === selected.id) ? [selected, ...filtered] : filtered;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search items..."
+        className="h-9 w-40 rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+      />
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={selectClassName}>
+        <option value="">{placeholder}</option>
+        {shown.map((i) => (
+          <option key={i.id} value={i.id}>
+            {i.name}
+          </option>
+        ))}
+      </select>
+      {term && (
+        <span className="text-xs text-muted-foreground">
+          {filtered.length} {filtered.length === 1 ? "match" : "matches"}
+        </span>
+      )}
     </div>
   );
 }
