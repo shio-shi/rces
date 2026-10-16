@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
@@ -160,9 +160,40 @@ function AdminPage() {
     setCodes((await listCodes()) as Promocode[]);
   }, [listCodes]);
 
+  // The item list loads in pages. loadedRef remembers how many items are shown, so reloading
+  // after an edit or delete keeps everything that was already loaded.
+  const ITEM_PAGE = 50;
+  const loadedRef = useRef(ITEM_PAGE);
+  const [hasMoreItems, setHasMoreItems] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const reloadItems = useCallback(async () => {
-    setItemOptions((await listItems()) as AdminItem[]);
+    const limit = Math.max(ITEM_PAGE, loadedRef.current);
+    // Ask for one extra row to know whether there is anything more to load
+    const rows = (await listItems({ data: { offset: 0, limit: limit + 1 } })) as AdminItem[];
+    setHasMoreItems(rows.length > limit);
+    setItemOptions(rows.slice(0, limit));
   }, [listItems]);
+
+  const loadMoreItems = async () => {
+    setLoadingMore(true);
+    try {
+      const rows = (await listItems({
+        data: { offset: itemOptions.length, limit: ITEM_PAGE + 1 },
+      })) as AdminItem[];
+      const next = rows.slice(0, ITEM_PAGE);
+      setHasMoreItems(rows.length > ITEM_PAGE);
+      loadedRef.current = itemOptions.length + next.length;
+      setItemOptions((prev) => {
+        const seen = new Set(prev.map((i) => i.id));
+        return [...prev, ...next.filter((i) => !seen.has(i.id))];
+      });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (!authed) return;
@@ -701,6 +732,22 @@ function AdminPage() {
               </li>
             ))}
           </ul>
+        )}
+        {itemOptions.length > 0 && (
+          <div className="mt-4 flex flex-col items-center gap-1">
+            {hasMoreItems ? (
+              <button
+                onClick={loadMoreItems}
+                disabled={loadingMore}
+                className="rounded-md border border-border px-6 py-2 text-sm font-bold hover:bg-surface disabled:opacity-50"
+              >
+                {loadingMore ? "Loading..." : "Load More"}
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground">That's every item.</p>
+            )}
+            <p className="text-xs text-muted-foreground">Showing {itemOptions.length} items</p>
+          </div>
         )}
       </div>
     </AppLayout>
