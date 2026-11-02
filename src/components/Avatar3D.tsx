@@ -6,8 +6,9 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { RoundedBoxGeometry } from "three-stdlib";
 import { parseRobloxMesh, base64ToBytes } from "@/lib/robloxMesh";
 import type { AccessoryMeta } from "@/lib/rbxm";
-import faceAsset from "@/assets/classic-face.png.asset.json";
-import headAsset from "@/assets/classic-head.mesh.asset.json";
+// Served from the public/ folder (classic-face.png and classic-head.mesh live there)
+const faceAsset = { url: "/classic-face.png" };
+const headAsset = { url: "/classic-head.mesh" };
 import {
   buildPartMaterials,
   loadImage,
