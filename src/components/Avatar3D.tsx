@@ -16,9 +16,9 @@ import {
   type Layer,
 } from "@/lib/clothing";
 
-// Served from the public/ folder (classic-face.png and classic-head.mesh live there)
-import faceUrl from "@/assets/classic-face.png?url";
-import headUrl from "@/assets/classic-head.mesh?url";
+import { CLASSIC_FACE_URL, CLASSIC_HEAD_URL } from "@/lib/classicAssets";
+const faceAsset = { url: CLASSIC_FACE_URL };
+const headAsset = { url: CLASSIC_HEAD_URL };
 const faceAsset = { url: faceUrl };
 const headAsset = { url: headUrl };
 
