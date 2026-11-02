@@ -157,15 +157,12 @@ export async function renderClothingThumb(
 }
 
 export async function loadHeadAndFace() {
-  const [{ parseRobloxMesh }, head, face] = await Promise.all([
-    import("@/lib/robloxMesh"),
-    import("@/assets/classic-head.mesh.asset.json"),
-    import("@/assets/classic-face.png.asset.json"),
-  ]);
+  const { parseRobloxMesh } = await import("@/lib/robloxMesh");
   let geo: THREE.BufferGeometry | null = null;
   try {
-    const buf = await (await fetch(head.default.url)).arrayBuffer();
-    const m = parseRobloxMesh(new Uint8Array(buf));
+    const res = await fetch("/classic-head.mesh");
+    if (!res.ok) throw new Error("head mesh not found");
+    const m = parseRobloxMesh(new Uint8Array(await res.arrayBuffer()));
     geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(m.positions, 3));
     geo.setAttribute("normal", new THREE.BufferAttribute(m.normals, 3));
@@ -173,6 +170,6 @@ export async function loadHeadAndFace() {
   } catch {
     geo = null;
   }
-  const faceImg = await loadImage(face.default.url).catch(() => null);
+  const faceImg = await loadImage("/classic-face.png").catch(() => null);
   return { geo, faceImg };
 }
