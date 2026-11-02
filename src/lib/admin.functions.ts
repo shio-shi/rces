@@ -544,21 +544,24 @@ export const adminSetAccessoryTurn = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
-// PASTE THIS AT THE VERY BOTTOM of src/lib/admin.functions.ts (after the last function).
-// It needs no new imports: it uses the same createServerFn that the rest of the file already imports.
 
-// Saves (or clears) an extra move for an accessory, in studs, from the avatar's own point of view:
-//   forward: + moves it toward the front of the avatar, - moves it back
-//   right:   + moves it toward the avatar's right, - toward its left
-//   up:      + moves it up, - moves it down
-// It is stored in the item's saved 3D data (meta.extraMove), so nothing has to be re-uploaded.
+// Saves (or clears) an extra move for an item, in studs from the avatar's own point of view, as
+// [right, up, forward]: right (+) moves it toward the avatar's right, left (-); up (+) / down (-);
+// forward (+) toward the front of the avatar, back (-). It is stored in the item's saved 3D data
+// as meta.extraMove (an array of three numbers, which is what Avatar3D.tsx reads), so nothing has
+// to be re-uploaded.
 export const adminSetAccessoryMove = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: { itemId: string; move: { forward: number; right: number; up: number } | null }) => data,
-  )
+  .inputValidator((data: { itemId: string; move: [number, number, number] | null }) => data)
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin();
+    if (
+      data.move !== null &&
+      (!Array.isArray(data.move) ||
+        data.move.length !== 3 ||
+        data.move.some((v) => typeof v !== "number" || !Number.isFinite(v) || Math.abs(v) > 20))
+    )
+      throw new Error("Each move value must be a number between -20 and 20.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error: readError } = await supabaseAdmin
       .from("item_accessories")
@@ -568,18 +571,8 @@ export const adminSetAccessoryMove = createServerFn({ method: "POST" })
     if (readError) throw new Error(readError.message);
     if (!row) throw new Error("This item has no 3D model yet. Upload one first.");
     const meta: Record<string, unknown> = { ...((row.meta as Record<string, unknown> | null) ?? {}) };
-    if (data.move === null) {
-      delete meta["extraMove"];
-    } else {
-      // Keep numbers sane: finite, at most 20 studs either way, three decimals
-      const clean = (n: number) =>
-        Number.isFinite(n) ? Math.max(-20, Math.min(20, Math.round(n * 1000) / 1000)) : 0;
-      meta["extraMove"] = {
-        forward: clean(data.move.forward),
-        right: clean(data.move.right),
-        up: clean(data.move.up),
-      };
-    }
+    if (data.move === null) delete meta["extraMove"];
+    else meta["extraMove"] = data.move.map((v) => Math.round(v * 1000) / 1000);
     const { error } = await supabaseAdmin
       .from("item_accessories")
       .update({ meta: meta as never, updated_at: new Date().toISOString() })
