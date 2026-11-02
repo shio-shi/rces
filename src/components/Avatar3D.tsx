@@ -17,8 +17,10 @@ import {
 } from "@/lib/clothing";
 
 // Served from the public/ folder (classic-face.png and classic-head.mesh live there)
-const faceAsset = { url: "/classic-face.png" };
-const headAsset = { url: "/classic-head.mesh" };
+import faceUrl from "@/assets/classic-face.png?url";
+import headUrl from "@/assets/classic-head.mesh?url";
+const faceAsset = { url: faceUrl };
+const headAsset = { url: headUrl };
 
 export type WornClothing = { itemId: string; kind: ClothingKind; template: string };
 
